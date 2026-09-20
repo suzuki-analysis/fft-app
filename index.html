@@ -6,72 +6,54 @@
 <title>加速度波形の解析</title>
 <style>
 :root{
-  --ink:#1b2430;
-  --ink-2:#55606e;
-  --ink-3:#8b95a3;
-  --paper:#f7f6f3;
-  --panel:#ffffff;
-  --rule:#d9d7d1;
-  --accent:#2f5d50;
-  --accent-soft:#e7efec;
-  --warn:#9a4b2f;
+  --ink:#1b2430; --ink-2:#55606e; --paper:#ffffff; --panel:#ffffff;
+  --rule:#cfd3d8; --accent:#2f5d50; --accent-soft:#e7efec; --warn:#9a4b2f;
   box-sizing:border-box;
-  padding-top:env(safe-area-inset-top,0px);
-  padding-bottom:env(safe-area-inset-bottom,0px);
 }
 *,*::before,*::after{box-sizing:inherit}
-body{
-  margin:0;
-  background:var(--paper);
-  color:var(--ink);
+body{margin:0;background:var(--paper);color:var(--ink);
   font-family:"Hiragino Kaku Gothic ProN","Yu Gothic",Meiryo,sans-serif;
-  font-size:15px;
-  line-height:1.7;
-}
-.wrap{max-width:860px;margin:0 auto;padding:32px 20px 80px}
-h1{font-size:23px;font-weight:600;margin:0 0 4px;letter-spacing:.02em}
-.sub{color:var(--ink-2);margin:0 0 28px;font-size:14px}
-.panel{background:var(--panel);border:1px solid var(--rule);padding:20px 22px;margin-bottom:18px}
-.panel h2{font-size:15px;font-weight:600;margin:0 0 14px;padding-bottom:8px;border-bottom:1px solid var(--rule)}
-.modes{display:flex;gap:12px;flex-wrap:wrap}
-.mode{flex:1 1 240px;text-align:left;background:var(--panel);border:1px solid var(--rule);padding:14px 16px;cursor:pointer;font:inherit;color:inherit}
+  font-size:15px;line-height:1.65}
+.wrap{max-width:1180px;margin:0 auto;padding:24px 20px 60px}
+h1{font-size:21px;font-weight:600;margin:0 0 2px}
+.sub{color:var(--ink-2);margin:0 0 18px;font-size:14px}
+.cols{display:grid;grid-template-columns:360px minmax(0,1fr);gap:20px;align-items:start}
+@media (max-width:820px){.cols{grid-template-columns:1fr}}
+.panel{border:1px solid var(--rule);padding:16px 18px;margin-bottom:14px;background:var(--panel)}
+.panel h2{font-size:14px;font-weight:600;margin:0 0 12px;padding-bottom:6px;border-bottom:1px solid var(--rule)}
+.modes{display:flex;flex-direction:column;gap:8px}
+.mode{text-align:left;background:#fff;border:1px solid var(--rule);padding:10px 12px;cursor:pointer;font:inherit;color:inherit}
 .mode:hover{border-color:var(--accent)}
 .mode[aria-pressed="true"]{border-color:var(--accent);background:var(--accent-soft);box-shadow:inset 3px 0 0 var(--accent)}
-.mode b{display:block;font-weight:600;font-size:15px}
-.mode span{display:block;color:var(--ink-2);font-size:13px;line-height:1.5;margin-top:2px}
-.drop{border:1px dashed var(--rule);background:#fbfaf8;padding:26px 16px;text-align:center;color:var(--ink-2);cursor:pointer}
+.mode b{display:block;font-weight:600;font-size:14px}
+.mode span{display:block;color:var(--ink-2);font-size:12.5px;line-height:1.45;margin-top:1px}
+.drop{border:1px dashed var(--rule);background:#fafafa;padding:18px 12px;text-align:center;color:var(--ink-2);cursor:pointer;font-size:14px}
 .drop.over{border-color:var(--accent);background:var(--accent-soft);color:var(--ink)}
 .drop input{display:none}
-.note{font-size:13px;color:var(--ink-2);margin-top:10px}
-.row{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px}
+.row{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:8px}
 label{font-size:14px}
-input[type=number]{width:110px;padding:6px 8px;border:1px solid var(--rule);background:#fff;font:inherit;color:inherit}
+.unit{color:var(--ink-2);font-size:13px}
+input[type=number]{width:100px;padding:5px 7px;border:1px solid var(--rule);background:#fff;font:inherit;color:inherit}
 input[type=number]:focus,button:focus-visible,.drop:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
-.chs{display:flex;flex-wrap:wrap;gap:8px}
-.ch{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--rule);padding:4px 10px;font-size:14px;cursor:pointer;background:#fff}
+.chs{display:flex;flex-wrap:wrap;gap:6px}
+.ch{display:inline-flex;align-items:center;gap:5px;border:1px solid var(--rule);padding:3px 9px;font-size:13.5px;cursor:pointer;background:#fff}
 .ch input{accent-color:var(--accent)}
-button.run,button.dl{background:var(--accent);color:#fff;border:none;padding:10px 22px;font:inherit;font-weight:600;cursor:pointer}
-button.dl{background:#fff;color:var(--accent);border:1px solid var(--accent);font-weight:400;padding:7px 16px}
+button.run,button.dl{background:var(--accent);color:#fff;border:none;padding:9px 20px;font:inherit;font-weight:600;cursor:pointer}
+button.dl{background:#fff;color:var(--accent);border:1px solid var(--accent);font-weight:400;padding:6px 14px}
 button:disabled{opacity:.4;cursor:not-allowed}
-.status{font-size:13px;color:var(--ink-2);margin-top:10px;min-height:1.4em}
+.status{font-size:13px;color:var(--ink-2);margin-top:8px;min-height:1.3em}
 .status.err{color:var(--warn)}
-#plot{width:100%;height:420px;display:block}
-#peaks{width:100%;border-collapse:collapse;font-size:14px;margin-top:14px}
-#peaks th,#peaks td{border-bottom:1px solid var(--rule);padding:6px 8px;text-align:right}
+#plot{width:100%;display:block}
+#peaks{width:100%;border-collapse:collapse;font-size:13.5px;margin-top:10px}
+#peaks th,#peaks td{border-bottom:1px solid var(--rule);padding:5px 8px;text-align:right}
 #peaks th:first-child,#peaks td:first-child{text-align:left}
 #peaks th{font-weight:600;color:var(--ink-2)}
 .hidden{display:none}
-.legend{display:flex;gap:14px;flex-wrap:wrap;font-size:13px;color:var(--ink-2);margin-top:8px}
+.legend{display:flex;gap:12px;flex-wrap:wrap;font-size:13px;color:var(--ink-2);margin-top:6px}
 .legend i{display:inline-block;width:14px;height:2px;vertical-align:middle;margin-right:5px}
-ul.notes{margin:8px 0 0;padding-left:1.2em;font-size:13px;color:var(--ink-2)}
-ul.notes li{margin-bottom:2px}
-@media (prefers-color-scheme:dark){
-  :root{--ink:#e9e7e1;--ink-2:#a8a49b;--ink-3:#7d7a72;--paper:#1a1c1b;--panel:#232625;--rule:#3a3e3c;--accent:#7fbca9;--accent-soft:#2b3634;--warn:#e0947a}
-  input[type=number],.ch{background:#1a1c1b;color:inherit}
-  .drop{background:#1f2221}
-  button.run{color:#12201c}
-  button.dl{background:transparent}
-}
+ul.notes{margin:6px 0 0;padding-left:1.2em;font-size:12.5px;color:var(--ink-2)}
+ul.notes li{margin-bottom:1px}
+.empty{color:var(--ink-2);font-size:14px;padding:40px 0;text-align:center}
 </style>
 </head>
 <body>
@@ -79,65 +61,74 @@ ul.notes li{margin-bottom:2px}
 <h1>加速度波形の解析</h1>
 <p class="sub">CSVを読み込んで，フーリエスペクトルまたは地震応答スペクトルを求めます。</p>
 
-<div class="panel">
-  <h2>1. 求めるもの</h2>
-  <div class="modes">
-    <button class="mode" id="mFourier" aria-pressed="true" type="button">
-      <b>フーリエスペクトル</b>
-      <span>常時微動など，定常な波形から卓越振動数を読む</span>
-    </button>
-    <button class="mode" id="mResp" aria-pressed="false" type="button">
-      <b>地震応答スペクトル</b>
-      <span>地震記録から擬似速度応答 pSv を求める</span>
-    </button>
+<div class="cols">
+<div>
+  <div class="panel">
+    <h2>1. 求めるもの</h2>
+    <div class="modes">
+      <button class="mode" id="mFourier" aria-pressed="true" type="button">
+        <b>フーリエスペクトル</b>
+        <span>定常な波形から卓越振動数を読む</span>
+      </button>
+      <button class="mode" id="mResp" aria-pressed="false" type="button">
+        <b>地震応答スペクトル</b>
+        <span>地震記録から擬似速度応答 pSv を求める</span>
+      </button>
+    </div>
+    <div class="row hidden" id="kindWrap" style="margin-top:12px;margin-bottom:0">
+      <label>波形の種類</label>
+      <label class="ch"><input type="radio" name="kind" value="micro" checked> 常時微動</label>
+      <label class="ch"><input type="radio" name="kind" value="quake"> 地震記録</label>
+    </div>
   </div>
-  <div class="row hidden" id="kindWrap" style="margin-top:14px">
-    <label>波形の種類</label>
-    <label class="ch"><input type="radio" name="kind" value="micro" checked> 常時微動</label>
-    <label class="ch"><input type="radio" name="kind" value="quake"> 地震記録</label>
+
+  <div class="panel">
+    <h2>2. データ</h2>
+    <div class="drop" id="drop" tabindex="0" role="button" aria-label="CSVファイルを選ぶ">
+      ここにCSVをドラッグするか，クリックして選択
+      <input type="file" id="file" accept=".csv,.txt">
+    </div>
+    <ul class="notes">
+      <li>ヘッダー行は入れず，数値だけにしてください</li>
+      <li>時刻の列は不要です。加速度の列だけを並べてください（列数は自由）</li>
+      <li>単位は変換しません。換算は倍率で行ってください（g から cm/s² なら 980.665）</li>
+    </ul>
+    <div class="row" style="margin-top:14px">
+      <label for="fs">サンプリング周波数</label>
+      <input type="number" id="fs" value="100" min="1" step="1">
+      <span class="unit">Hz</span>
+    </div>
+    <div class="row">
+      <label for="scale">倍率</label>
+      <input type="number" id="scale" value="1" step="any">
+      <span class="unit">読み込んだ値に掛けます</span>
+    </div>
+    <div id="chWrap" class="hidden">
+      <div class="row" style="margin-bottom:6px"><label>チャンネル</label></div>
+      <div class="chs" id="chs"></div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <h2>3. 計算</h2>
+    <button class="run" id="run" disabled type="button">計算する</button>
+    <div class="status" id="status">CSVを読み込んでください。</div>
+    <ul class="notes" id="fixed"></ul>
   </div>
 </div>
 
-<div class="panel">
-  <h2>2. データ</h2>
-  <div class="drop" id="drop" tabindex="0" role="button" aria-label="CSVファイルを選ぶ">
-    ここにCSVをドラッグするか，クリックして選択
-    <input type="file" id="file" accept=".csv,.txt">
-  </div>
-  <ul class="notes">
-    <li>ヘッダー行は入れず，数値だけにしてください</li>
-    <li>時刻の列は不要です。加速度の列だけを並べてください（列数は自由）</li>
-    <li>単位は変換しません。換算したいときは下の倍率を使ってください（例：g から cm/s² なら 980.665）</li>
-  </ul>
-  <div class="row" style="margin-top:16px">
-    <label for="fs">サンプリング周波数</label>
-    <input type="number" id="fs" value="100" min="1" step="1">
-    <span style="color:var(--ink-2);font-size:14px">Hz</span>
-  </div>
-  <div class="row">
-    <label for="scale">倍率</label>
-    <input type="number" id="scale" value="1" step="any">
-    <span style="color:var(--ink-2);font-size:14px">読み込んだ値にこの数を掛けます</span>
-  </div>
-  <div id="chWrap" class="hidden">
-    <div class="row"><label>チャンネル</label></div>
-    <div class="chs" id="chs"></div>
+<div>
+  <div class="panel">
+    <h2 id="outTitle">結果</h2>
+    <div class="empty" id="empty">計算すると，ここにグラフが表示されます。</div>
+    <div id="out" class="hidden">
+      <svg id="plot" role="img" aria-label="解析結果のグラフ"></svg>
+      <div class="legend" id="legend"></div>
+      <table id="peaks" class="hidden"><thead><tr><th>チャンネル</th><th>順位</th><th>振動数 (Hz)</th><th>振幅</th></tr></thead><tbody></tbody></table>
+      <div class="row" style="margin-top:12px;margin-bottom:0"><button class="dl" id="dl" type="button">CSVをダウンロード</button></div>
+    </div>
   </div>
 </div>
-
-<div class="panel">
-  <h2>3. 計算</h2>
-  <button class="run" id="run" disabled type="button">計算する</button>
-  <div class="status" id="status">CSVを読み込んでください。</div>
-  <ul class="notes" id="fixed"></ul>
-</div>
-
-<div class="panel hidden" id="out">
-  <h2 id="outTitle">結果</h2>
-  <svg id="plot" role="img" aria-label="解析結果のグラフ"></svg>
-  <div class="legend" id="legend"></div>
-  <table id="peaks" class="hidden"><thead><tr><th>チャンネル</th><th>順位</th><th>振動数 (Hz)</th><th>振幅</th></tr></thead><tbody></tbody></table>
-  <div class="row" style="margin-top:16px"><button class="dl" id="dl" type="button">CSVをダウンロード</button></div>
 </div>
 </div>
 
@@ -181,10 +172,12 @@ function setMode(m){
   $('mResp').setAttribute('aria-pressed', m === 'resp');
   $('kindWrap').classList.toggle('hidden', m !== 'fourier');
   $('out').classList.add('hidden');
+  $('empty').classList.remove('hidden');
   result = null;
   fixedNotes();
 }
-document.querySelectorAll('input[name=kind]').forEach(r => r.onchange = () => { fixedNotes(); $('out').classList.add('hidden'); result = null; });
+document.querySelectorAll('input[name=kind]').forEach(r => r.onchange = () => { fixedNotes(); $('out').classList.add('hidden');
+  $('empty').classList.remove('hidden'); result = null; });
 $('mFourier').onclick = () => setMode('fourier');
 $('mResp').onclick = () => setMode('resp');
 
@@ -227,6 +220,7 @@ function parse(text, name){
   $('chWrap').classList.remove('hidden');
   $('run').disabled = false;
   $('out').classList.add('hidden');
+  $('empty').classList.remove('hidden');
   status(name + ' を読み込みました。' + data.length + ' 行，' + nch + ' 列'
     + (skipped ? '（数値でない ' + skipped + ' 行は読み飛ばしました）' : ''));
 }
@@ -554,6 +548,7 @@ function draw(){
     $('peaks').classList.add('hidden');
   }
   $('out').classList.remove('hidden');
+  $('empty').classList.add('hidden');
 }
 
 $('dl').onclick = () => {
