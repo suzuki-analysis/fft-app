@@ -454,6 +454,12 @@ function makeModel(p){
     return Math.min(Math.max(Ku, 1e-9), K0);
   }
 
+  // 降伏後の骨格曲線を延長した直線で上限を与える（原点付近の経路は拘束しない）
+  function capY(f, d, s){
+    const kb = pts.length ? pts[pts.length - 1].k : K0;
+    return s > 0 ? Math.min(f,  fY + kb * (d - dY)) : Math.max(f, -fY + kb * (d + dY));
+  }
+
   function force(d){
     if (!pts.length) return K0 * d;
     const dd = d - st.d;
@@ -509,6 +515,12 @@ function makeModel(p){
         tD = s > 0 ? st.dmaxP : st.dmaxN;
         tF = s > 0 ? st.fmaxP : st.fmaxN;
       }
+      if (s * rF > 1e-12 * fY){                        // 内側の再載荷
+        const den = tD - rD;
+        let k = Math.abs(den) > 1e-9 ? (tF - rF) / den : K0;
+        if (!(k > 0) || k > K0) k = K0;                   // 初期剛性を超えない
+        return capY(rF + k * (d - rD), d, s);
+      }
       // d0：降伏後はピークから C2 ぶん下がった点，
       //     降伏前は除荷経路が原点を通る傾き βK0 の直線に達した点
       const d0of = (pD0, pF0, sg, yl) => {
@@ -529,7 +541,8 @@ function makeModel(p){
       // 逆側の d0'（逆側の最大点から同じ規則で求める）と d1' = η d0'
       const ylT = Math.abs(tD) >= dY - 1e-12;               // 逆側が降伏済みか
       const Q = d0of(tD, tF, -s, ylT);
-      const d1 = eta * Q.dB;
+      let d1 = eta * Q.dB;
+      if (s * (d1 - dB) < 0) d1 = dB;                     // d1' が d0 より手前ならスリップ域なし
       const fC = fB + Kb * (d1 - dB);
       // 逆側が降伏前なら，第2剛性での立ち上がり区間は設けず最大点を直接指向する
       const rise = ylT ? (fY - fcv) : 0;
@@ -544,7 +557,9 @@ function makeModel(p){
         if (s * (d - dD) <= 0) f = fC + Ka * (d - d1);
         else {
           const den = tD - dD;
-          f = Math.abs(den) > 1e-12 ? fD + (tF - fD) / den * (d - dD) : fD;
+          let k5 = Math.abs(den) > 1e-9 ? (tF - fD) / den : K0;
+          if (!(k5 > 0) || k5 > K0) k5 = K0;           // 初期剛性を超えない
+          f = fD + k5 * (d - dD);
         }
         const b = bone(d);
         if (s > 0) f = Math.min(f, Math.max(b, fC));
@@ -554,13 +569,21 @@ function makeModel(p){
     }
 
     // 武田（CP2 / CP3）
-    let Kr = st.Kr, d0 = st.d0;
-    if (s !== st.dir){ Kr = unloadK(!st.onSkel); d0 = st.d - st.f / Kr; }
-    const unl = Kr * (d - d0);
+    let Kr = st.Kr, d0 = st.d0, rD = st.rD, rF = st.rF;
+    if (s !== st.dir){ Kr = unloadK(!st.onSkel); d0 = st.d - st.f / Kr; rD = st.d; rF = st.f; }
+    const lineTo = () => {                          // 反転点から最大点へ
+      const den = tgtD - rD;
+      let k = Math.abs(den) > 1e-9 ? (tgtF - rF) / den : K0;
+      if (!(k > 0) || k > K0) k = K0;               // 初期剛性を超えない
+      return capY(rF + k * (d - rD), d, s);
+    };
+    if (s * rF >= 0) return lineTo();               // 内側の再載荷
+    if (s * (d - d0) <= 0) return rF + Kr * (d - rD);  // 除荷：荷重ゼロまで Ku
     const valid = s > 0 ? (tgtD - d0) > 1e-12 : (tgtD - d0) < -1e-12;
-    let reload = s > 0 ? Infinity : -Infinity;
-    if (valid) reload = tgtF / (tgtD - d0) * (d - d0);
-    return s > 0 ? Math.min(unl, reload) : Math.max(unl, reload);
+    if (!valid) return rF + Kr * (d - rD);
+    let kt = tgtF / (tgtD - d0);
+    if (!(kt > 0) || kt > K0) kt = K0;              // 初期剛性を超えない
+    return capY(kt * (d - d0), d, s);
   }
 
   function commit(d){
