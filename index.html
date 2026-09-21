@@ -484,7 +484,7 @@ function draw(){
   const ink = css.getPropertyValue('--ink').trim(), ink2 = css.getPropertyValue('--ink-2').trim();
   const rule = css.getPropertyValue('--rule').trim();
   const F = 'font-family="Arial, Helvetica, sans-serif" font-style="italic"';
-  const tick = (lo, hi) => { const st = Math.pow(10, Math.floor(Math.log10(hi - lo))); const c = [1, 2, 5, 10]
+  const tick = (lo, hi) => { const st = Math.pow(10, Math.floor(Math.log10(hi - lo)) - 1); const c = [1, 2, 5, 10]
       .map(k => k * st).find(k => (hi - lo) / k <= 8) || st; const o = []; for (let v = 0; v <= hi + 1e-9; v += c) o.push(v); return o; };
 
   let g = '<rect x="' + m.l + '" y="' + m.t + '" width="' + iw + '" height="' + ih
