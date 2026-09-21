@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ひずみ→応力変換（鋼）</title>
+<style>
+  :root{
+    --ink:#1d2733; --sub:#5b6878; --line:#c9d2dc; --bg:#f3f6f9;
+    --panel:#ffffff; --steel:#2f5d86; --steel-l:#e3edf6; --warn:#a4462b;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);
+    font-family:"Hiragino Kaku Gothic ProN","Yu Gothic","Meiryo",sans-serif;line-height:1.7}
+  main{max-width:760px;margin:0 auto;padding:32px 20px 60px}
+  h1{font-size:1.45rem;margin:0 0 4px;letter-spacing:.02em}
+  .lead{color:var(--sub);margin:0 0 24px;font-size:.93rem}
+  section{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:20px 22px;margin-bottom:18px}
+  h2{font-size:1rem;margin:0 0 12px;color:var(--steel)}
+  .params{display:flex;gap:28px;flex-wrap:wrap;align-items:flex-end}
+  label{display:block;font-size:.85rem;color:var(--sub);margin-bottom:4px}
+  input[type=number]{width:170px;padding:7px 10px;font-size:1rem;border:1px solid var(--line);border-radius:4px;
+    font-family:Arial,sans-serif}
+  input[type=number]:focus,button:focus-visible,#drop:focus-visible{outline:2px solid var(--steel);outline-offset:2px}
+  .unit{font-size:.85rem;color:var(--sub);margin-left:4px}
+  select{padding:7px 10px;font-size:1rem;border:1px solid var(--line);border-radius:4px;background:#fff}
+  select:focus{outline:2px solid var(--steel);outline-offset:2px}
+  .rec{font-size:.8rem;color:var(--warn);margin-top:3px}
+  .model{display:flex;gap:20px;align-items:center;flex-wrap:wrap;margin-top:16px}
+  .model svg{flex:0 0 auto}
+  .model p{margin:0;font-size:.85rem;color:var(--sub);flex:1 1 260px}
+  #drop{border:2px dashed var(--line);border-radius:6px;padding:34px 16px;text-align:center;cursor:pointer;
+    color:var(--sub);transition:background .15s,border-color .15s}
+  #drop.over{background:var(--steel-l);border-color:var(--steel);color:var(--steel)}
+  #drop strong{color:var(--ink)}
+  .note{font-size:.82rem;color:var(--sub);margin:10px 0 0}
+  #msg{margin-top:12px;font-size:.9rem}
+  #msg.err{color:var(--warn)}
+  .tblwrap{overflow-x:auto;margin-top:10px}
+  table{border-collapse:collapse;font-family:Arial,sans-serif;font-size:.85rem;min-width:100%}
+  th,td{border-bottom:1px solid var(--line);padding:5px 10px;text-align:right;white-space:nowrap}
+  th{background:var(--steel-l);font-weight:600;color:var(--ink)}
+  td.y{color:var(--warn);font-weight:600}
+  button{background:var(--steel);color:#fff;border:0;border-radius:4px;padding:10px 20px;font-size:.95rem;cursor:pointer}
+  button:hover{background:#244a6c}
+  button:disabled{background:#9aa8b6;cursor:default}
+  .hidden{display:none}
+</style>
+</head>
+<body>
+<main>
+  <h1>ひずみ→応力変換（鋼）</h1>
+  <p class="lead">ひずみゲージの値（μ）を，バイリニアまたは修正Menegotto-Pintoモデルで応力（N/mm²）に変換します。除荷・繰返しの履歴を考慮します。</p>
+
+  <section>
+    <h2>材料定数</h2>
+    <div class="params">
+      <div>
+        <label for="E">ヤング係数 E</label>
+        <input type="number" id="E" value="205000" step="any" min="0"><span class="unit">N/mm²</span>
+      </div>
+      <div>
+        <label for="fy">降伏強度 f<sub>y</sub></label>
+        <input type="number" id="fy" placeholder="例：345" step="any" min="0"><span class="unit">N/mm²</span>
+      </div>
+      <div>
+        <label for="p">降伏後の剛性比 E<sub>2</sub>/E</label>
+        <input type="number" id="p" value="0" step="0.001" min="0" max="0.999">
+        <div class="rec" id="recNote">推奨値：0（完全弾塑性）</div>
+      </div>
+      <div>
+        <label for="hard">硬化則</label>
+        <select id="hard">
+          <option value="kin" selected>移動硬化</option>
+          <option value="iso">等方硬化</option>
+          <option value="mp">修正Menegotto-Pinto</option>
+        </select>
+        <div class="rec" style="visibility:hidden">-</div>
+      </div>
+    </div>
+    <div class="model" id="biModel">
+      <svg width="220" height="150" viewBox="0 0 220 150" aria-label="完全弾塑性モデルの模式図">
+        <g stroke="#9aa8b6" stroke-width="1">
+          <line x1="10" y1="75" x2="212" y2="75"/><line x1="110" y1="8" x2="110" y2="142"/>
+        </g>
+        <polyline points="30,120 75,120 145,30 190,30" fill="none" stroke="#2f5d86" stroke-width="2"/>
+        <polyline points="150,30 80,120" fill="none" stroke="#2f5d86" stroke-width="1.2" stroke-dasharray="4 3"/>
+        <g font-family="Arial" font-style="italic" font-size="12" fill="#1d2733">
+          <text x="196" y="90">ε</text><text x="116" y="16">σ</text>
+          <text x="152" y="24">f<tspan font-size="9" dy="3">y</tspan></text>
+          <text x="36" y="136">−f<tspan font-size="9" dy="3">y</tspan></text>
+          <text x="118" y="70">E</text>
+        </g>
+      </svg>
+      <p>降伏後の勾配は E<sub>2</sub>（E<sub>2</sub>/E = 0 で ±f<sub>y</sub> 頭打ちの完全弾塑性），除荷は E の勾配で戻ります（初期状態は応力 0）。移動硬化は弾性範囲の幅 2f<sub>y</sub> を保って移動，等方硬化は降伏応力が引張・圧縮とも拡大します。</p>
+    </div>
+  </section>
+
+  <section>
+    <h2>CSVデータ</h2>
+    <div id="drop" tabindex="0" role="button" aria-label="CSVファイルを選択">
+      <strong>CSVファイルをここにドラッグ</strong><br>またはクリックして選択
+    </div>
+    <input type="file" id="file" accept=".csv,.txt" class="hidden">
+    <p class="note">ヘッダーなし・複数列に対応（各列を別のゲージとして計算）。区切りはカンマ・タブ・空白のいずれも可。値の単位は μ（×10⁻⁶）。空欄はそのまま空欄で出力します。</p>
+    <div id="msg"></div>
+  </section>
+
+  <section id="result" class="hidden">
+    <h2>変換結果</h2>
+    <div class="tblwrap"><table id="summary"></table></div>
+    <p class="note">赤字は降伏に達した列です（Menegotto-Pintoでは漸近線の交点を超えた列）。</p>
+    <div style="margin-top:16px"><button id="dl">応力CSVをダウンロード</button></div>
+  </section>
+</main>
+
+<script>
+(function(){
+  const $ = id => document.getElementById(id);
+  const drop = $('drop'), fileIn = $('file'), msg = $('msg');
+  let rawRows = null, fileName = 'data', outCsv = '';
+
+  function setMsg(t, err){ msg.textContent = t; msg.className = err ? 'err' : ''; }
+
+  // CSV読込（区切り：カンマ／タブ／空白）
+  function parse(text){
+    const rows = [];
+    for (const line of text.replace(/^\uFEFF/, '').split(/\r?\n/)){
+      if (line.trim() === '') continue;
+      const cells = line.includes(',') ? line.split(',')
+                  : line.includes('\t') ? line.split('\t')
+                  : line.trim().split(/\s+/);
+      rows.push(cells.map(c => c.trim()));
+    }
+    return rows;
+  }
+
+  // 完全弾塑性バイリニア（履歴考慮）
+  // バイリニア（移動硬化／等方硬化，リターンマッピング）
+  function convert(rows, E, fy, p, hard, mp){
+    const nCol = Math.max(...rows.map(r => r.length));
+    const H = E * p / (1 - p);               // 塑性係数（E2 = E·H/(E+H)）
+    const sig = new Array(nCol).fill(0), epsPrev = new Array(nCol).fill(0);
+    const alpha = new Array(nCol).fill(0);   // 移動硬化：背応力
+    const R = new Array(nCol).fill(fy);      // 等方硬化：降伏応力
+    // 修正Menegotto-Pinto（Filippouら 1983／OpenSees Steel02 と同じアルゴリズム）
+    const ey = fy / E, Esh = p * E;
+    const M = Array.from({length:nCol}, () => ({kon:0, eP:0, sP:0, emax:0, emin:0, epl:0, e0:0, s0:0, er:0, sr:0, over:false}));
+    function mpStep(m, eps){
+      const de = eps - m.eP;
+      if (m.kon === 0){
+        if (de === 0) return 0;
+        m.emax = ey; m.emin = -ey;
+        if (de < 0){ m.kon = 2; m.e0 = -ey; m.s0 = -fy; m.epl = -ey; }
+        else       { m.kon = 1; m.e0 =  ey; m.s0 =  fy; m.epl =  ey; }
+      }
+      if (m.kon === 2 && de > 0){          // 圧縮→引張へ反転
+        m.kon = 1; m.er = m.eP; m.sr = m.sP;
+        if (m.eP < m.emin) m.emin = m.eP;
+        const sh = 1 + mp.a3 * Math.pow((m.emax - m.emin) / (2 * mp.a4 * ey), 0.8);
+        m.e0 = (fy * sh - Esh * ey * sh - m.sr + E * m.er) / (E - Esh);
+        m.s0 = fy * sh + Esh * (m.e0 - ey * sh);
+        m.epl = m.emax;
+      } else if (m.kon === 1 && de < 0){   // 引張→圧縮へ反転
+        m.kon = 2; m.er = m.eP; m.sr = m.sP;
+        if (m.eP > m.emax) m.emax = m.eP;
+        const sh = 1 + mp.a3 * Math.pow((m.emax - m.emin) / (2 * mp.a4 * ey), 0.8);
+        m.e0 = (-fy * sh + Esh * ey * sh - m.sr + E * m.er) / (E - Esh);
+        m.s0 = -fy * sh + Esh * (m.e0 + ey * sh);
+        m.epl = m.emin;
+      }
+      const xi = Math.abs((m.epl - m.e0) / ey);
+      const Rc = mp.R0 - mp.a1 * xi / (mp.a2 + xi);
+      const er = (eps - m.er) / (m.e0 - m.er);
+      const s = (p * er + (1 - p) * er / Math.pow(1 + Math.pow(Math.abs(er), Rc), 1 / Rc)) * (m.s0 - m.sr) + m.sr;
+      if (er > 1) m.over = true;
+      m.eP = eps; m.sP = s;
+      return s;
+    }
+    const st = Array.from({length:nCol}, () => ({n:0, emax:-Infinity, emin:Infinity, smax:-Infinity, smin:Infinity, yld:false}));
+    let bad = 0;
+    const out = rows.map(r => {
+      const o = [];
+      for (let j = 0; j < nCol; j++){
+        const c = r[j];
+        if (c === undefined || c === ''){ o.push(''); continue; }
+        const e = Number(c);
+        if (!isFinite(e)){ o.push(''); bad++; continue; }
+        const eps = e * 1e-6;
+        let s;
+        if (hard === 'mp'){
+          s = mpStep(M[j], eps);
+          if (M[j].over) st[j].yld = true;
+        } else {
+          s = sig[j] + E * (eps - epsPrev[j]);
+          const a = hard === 'kin' ? alpha[j] : 0;
+          const r = hard === 'kin' ? fy : R[j];
+          const f = Math.abs(s - a) - r;
+          if (f > 0){
+            const sg = Math.sign(s - a), dg = f / (E + H);
+            s -= E * dg * sg;
+            if (hard === 'kin') alpha[j] += H * dg * sg; else R[j] += H * dg;
+            st[j].yld = true;
+          }
+        }
+        sig[j] = s; epsPrev[j] = eps;
+        const k = st[j]; k.n++;
+        k.emax = Math.max(k.emax, e); k.emin = Math.min(k.emin, e);
+        k.smax = Math.max(k.smax, s); k.smin = Math.min(k.smin, s);
+        o.push(fmt(s));
+      }
+      return o;
+    });
+    return {out, st, bad};
+  }
+
+  function fmt(v){ const r = Math.round(v * 1000) / 1000; return String(Object.is(r, -0) ? 0 : r); }
+  function f1(v){ return isFinite(v) ? (Math.round(v * 10) / 10).toString() : '−'; }
+
+  function run(){
+    if (!rawRows) return;
+    const E = parseFloat($('E').value), fy = parseFloat($('fy').value);
+    const p = parseFloat($('p').value), hard = $('hard').value;
+    if (!(E > 0)){ setMsg('ヤング係数に正の値を入力してください。', true); $('result').classList.add('hidden'); return; }
+    if (!(fy > 0)){ setMsg('降伏強度に正の値を入力してください。', true); $('result').classList.add('hidden'); return; }
+    if (!(p >= 0 && p < 1)){ setMsg('剛性比 E2/E は 0 以上 1 未満で入力してください（推奨値：0）。', true); $('result').classList.add('hidden'); return; }
+    const mp = {R0:20, a1:18.5, a2:0.15, a3:0, a4:1};   // 固定値（等方硬化なし）
+    const {out, st, bad} = convert(rawRows, E, fy, p, hard, mp);
+    outCsv = out.map(r => r.join(',')).join('\r\n') + '\r\n';
+    const ey = fy / E * 1e6;
+    let h = '<tr><th>列</th><th>データ数</th><th>最大ひずみ (μ)</th><th>最小ひずみ (μ)</th><th>最大応力 (N/mm²)</th><th>最小応力 (N/mm²)</th></tr>';
+    st.forEach((k, j) => {
+      const cls = k.yld ? ' class="y"' : '';
+      h += `<tr><td${cls}>${j + 1}</td><td>${k.n}</td><td>${f1(k.emax)}</td><td>${f1(k.emin)}</td><td${cls}>${f1(k.smax)}</td><td${cls}>${f1(k.smin)}</td></tr>`;
+    });
+    $('summary').innerHTML = h;
+    $('result').classList.remove('hidden');
+    setMsg(`${fileName}：${rawRows.length} 行 × ${st.length} 列を変換しました（降伏ひずみ εy = ${f1(ey)} μ）。` +
+           (bad ? ` 数値でないセル ${bad} 個は空欄にしました。` : ''), false);
+  }
+
+  function load(file){
+    if (!file) return;
+    fileName = file.name;
+    const rd = new FileReader();
+    rd.onload = () => {
+      rawRows = parse(rd.result);
+      if (!rawRows.length){ setMsg('データが見つかりません。CSVの中身を確認してください。', true); rawRows = null; return; }
+      run();
+    };
+    rd.onerror = () => setMsg('ファイルを読み込めませんでした。', true);
+    rd.readAsText(file);
+  }
+
+  drop.addEventListener('click', () => fileIn.click());
+  drop.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' '){ e.preventDefault(); fileIn.click(); } });
+  fileIn.addEventListener('change', () => { load(fileIn.files[0]); fileIn.value = ''; });
+  ['dragenter','dragover'].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.add('over'); }));
+  ['dragleave','drop'].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.remove('over'); }));
+  drop.addEventListener('drop', e => load(e.dataTransfer.files[0]));
+  // 定数を変えたら再計算
+  $('E').addEventListener('input', run);
+  $('fy').addEventListener('input', run);
+  $('p').addEventListener('input', run);
+  function toggle(){
+    const m = $('hard').value === 'mp';
+    $('biModel').classList.toggle('hidden', m);
+    $('recNote').style.visibility = m ? 'hidden' : 'visible';
+  }
+  $('hard').addEventListener('change', () => { toggle(); run(); });
+  toggle();
+
+  $('dl').addEventListener('click', () => {
+    const blob = new Blob([outCsv], {type:'text/csv'});
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = fileName.replace(/\.[^.]+$/, '') + '_stress.csv';
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  });
+})();
+</script>
+</body>
+</html>
