@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>3軸ロゼットゲージ解析（直角型・鋼）</title>
+<style>
+  :root{
+    --ink:#1d2733; --sub:#5b6878; --line:#c9d2dc; --bg:#f3f6f9;
+    --panel:#ffffff; --steel:#2f5d86; --steel-l:#e3edf6; --warn:#a4462b;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);
+    font-family:"Hiragino Kaku Gothic ProN","Yu Gothic","Meiryo",sans-serif;line-height:1.7}
+  main{max-width:780px;margin:0 auto;padding:32px 20px 60px}
+  h1{font-size:1.45rem;margin:0 0 4px;letter-spacing:.02em}
+  .lead{color:var(--sub);margin:0 0 24px;font-size:.93rem}
+  section{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:20px 22px;margin-bottom:18px}
+  h2{font-size:1rem;margin:0 0 12px;color:var(--steel)}
+  .params{display:flex;gap:24px;flex-wrap:wrap;align-items:flex-start}
+  label{display:block;font-size:.85rem;color:var(--sub);margin-bottom:4px}
+  input[type=number]{width:150px;padding:7px 10px;font-size:1rem;border:1px solid var(--line);border-radius:4px;font-family:Arial,sans-serif}
+  select{padding:7px 10px;font-size:1rem;border:1px solid var(--line);border-radius:4px;background:#fff}
+  input[type=number]:focus,select:focus,button:focus-visible,#drop:focus-visible{outline:2px solid var(--steel);outline-offset:2px}
+  .unit{font-size:.85rem;color:var(--sub);margin-left:4px}
+  .rec{font-size:.8rem;color:var(--warn);margin-top:3px}
+  .model{display:flex;gap:20px;align-items:center;flex-wrap:wrap;margin-top:16px}
+  .model p{margin:0;font-size:.85rem;color:var(--sub);flex:1 1 280px}
+  #drop{border:2px dashed var(--line);border-radius:6px;padding:34px 16px;text-align:center;cursor:pointer;
+    color:var(--sub);transition:background .15s,border-color .15s}
+  #drop.over{background:var(--steel-l);border-color:var(--steel);color:var(--steel)}
+  #drop strong{color:var(--ink)}
+  .note{font-size:.82rem;color:var(--sub);margin:10px 0 0}
+  #msg{margin-top:12px;font-size:.9rem}
+  #msg.err{color:var(--warn)}
+  .tblwrap{overflow-x:auto;margin-top:10px}
+  table{border-collapse:collapse;font-family:Arial,sans-serif;font-size:.85rem;min-width:100%}
+  th,td{border-bottom:1px solid var(--line);padding:5px 10px;text-align:right;white-space:nowrap}
+  th{background:var(--steel-l);font-weight:600}
+  td.y{color:var(--warn);font-weight:600}
+  button{background:var(--steel);color:#fff;border:0;border-radius:4px;padding:10px 20px;font-size:.95rem;cursor:pointer}
+  button:hover{background:#244a6c}
+  .hidden{display:none}
+</style>
+</head>
+<body>
+<main>
+  <h1>3軸ロゼットゲージ解析（直角型・鋼）</h1>
+  <p class="lead">0°-45°-90°ロゼットゲージのひずみ（μ）から，平面応力状態の応力を求めます。降伏後は von Mises の降伏条件とバイリニア硬化で増分計算します。</p>
+
+  <section>
+    <h2>材料定数</h2>
+    <div class="params">
+      <div>
+        <label for="E">ヤング係数 E</label>
+        <input type="number" id="E" value="205000" step="any" min="0"><span class="unit">N/mm²</span>
+      </div>
+      <div>
+        <label for="nu">ポアソン比 ν</label>
+        <input type="number" id="nu" value="0.3" step="0.01" min="0" max="0.49">
+      </div>
+      <div>
+        <label for="fy">降伏強度 f<sub>y</sub></label>
+        <input type="number" id="fy" placeholder="例：345" step="any" min="0"><span class="unit">N/mm²</span>
+      </div>
+      <div>
+        <label for="p">降伏後の剛性比 E<sub>2</sub>/E</label>
+        <input type="number" id="p" value="0" step="0.001" min="0" max="0.999">
+        <div class="rec">推奨値：0（完全弾塑性）</div>
+      </div>
+      <div>
+        <label for="hard">硬化則</label>
+        <select id="hard">
+          <option value="kin" selected>移動硬化</option>
+          <option value="iso">等方硬化</option>
+        </select>
+      </div>
+    </div>
+    <div class="model">
+      <svg width="150" height="130" viewBox="0 0 150 130" aria-label="ゲージ配置図">
+        <g stroke="#2f5d86" stroke-width="3" stroke-linecap="round">
+          <line x1="40" y1="100" x2="120" y2="100"/>
+          <line x1="40" y1="100" x2="97" y2="43"/>
+          <line x1="40" y1="100" x2="40" y2="20"/>
+        </g>
+        <g font-family="Arial" font-style="italic" font-size="13" fill="#1d2733">
+          <text x="124" y="104">a (0°)</text>
+          <text x="100" y="40">b (45°)</text>
+          <text x="46" y="20">c (90°)</text>
+          <text x="118" y="120">x</text><text x="24" y="28">y</text>
+        </g>
+      </svg>
+      <p>ε<sub>x</sub> = ε<sub>a</sub>，ε<sub>y</sub> = ε<sub>c</sub>，γ<sub>xy</sub> = 2ε<sub>b</sub> − ε<sub>a</sub> − ε<sub>c</sub>。主応力方向 θ は a（x軸）から b 側へ測った角度（°）です。初期状態は応力 0 とします。</p>
+    </div>
+  </section>
+
+  <section>
+    <h2>CSVデータ</h2>
+    <div id="drop" tabindex="0" role="button" aria-label="CSVファイルを選択">
+      <strong>CSVファイルをここにドラッグ</strong><br>またはクリックして選択
+    </div>
+    <input type="file" id="file" accept=".csv,.txt" class="hidden">
+    <p class="note">ヘッダーなし。3列で1組（a, b, c の順）とし，複数組（3n列）に対応。区切りはカンマ・タブ・空白のいずれも可。値の単位は μ（×10⁻⁶）。1組の中に空欄がある行は，その組を空欄で出力します。</p>
+    <div id="msg"></div>
+  </section>
+
+  <section id="result" class="hidden">
+    <h2>解析結果</h2>
+    <div class="tblwrap"><table id="summary"></table></div>
+    <p class="note">赤字は降伏に達した組です。出力CSVは1行目に項目名を付け，各組につき σx, σy, τxy, σ1, σ2, θ, σeq（N/mm²，θ は °）の7列を出力します。</p>
+    <div style="margin-top:16px"><button id="dl">解析結果CSVをダウンロード</button></div>
+  </section>
+</main>
+
+<script>
+(function(){
+  const $ = id => document.getElementById(id);
+  const drop = $('drop'), fileIn = $('file'), msg = $('msg');
+  let rawRows = null, fileName = 'data', outCsv = '';
+
+  function setMsg(t, err){ msg.textContent = t; msg.className = err ? 'err' : ''; }
+
+  function parse(text){
+    const rows = [];
+    for (const line of text.replace(/^\uFEFF/, '').split(/\r?\n/)){
+      if (line.trim() === '') continue;
+      const cells = line.includes(',') ? line.split(',')
+                  : line.includes('\t') ? line.split('\t')
+                  : line.trim().split(/\s+/);
+      rows.push(cells.map(c => c.trim()));
+    }
+    return rows;
+  }
+
+  // 平面応力 J2 弾塑性（線形の移動硬化／等方硬化，リターンマッピング）
+  // 固有値基底：ξ1=(ξx+ξy)/√2, ξ2=(ξy−ξx)/√2, ξ3=τxy
+  function makeMaterial(E, nu, fy, p, hard){
+    const G = E / (2 * (1 + nu));
+    const lamC = [E / (1 - nu), 2 * G, G];
+    const lamP = [1 / 3, 1, 2];
+    const H = E * p / (1 - p);                     // 単軸の塑性係数
+    const Hk = hard === 'kin' ? H : 0, Hi = hard === 'iso' ? H : 0;
+    const Cm = E / (1 - nu * nu);
+    const r2 = Math.SQRT2;
+    const toE = v => [(v[0] + v[1]) / r2, (v[1] - v[0]) / r2, v[2]];
+    const fromE = w => [(w[0] - w[1]) / r2, (w[0] + w[1]) / r2, w[2]];
+
+    return function(){
+      let sig = [0, 0, 0], alp = [0, 0, 0], epsN = [0, 0, 0], ebar = 0, yielded = false;
+      return {
+        step(eps){
+          const d = [eps[0] - epsN[0], eps[1] - epsN[1], eps[2] - epsN[2]];
+          const tr = [sig[0] + Cm * (d[0] + nu * d[1]),
+                      sig[1] + Cm * (nu * d[0] + d[1]),
+                      sig[2] + G * d[2]];
+          const xt = toE([tr[0] - alp[0], tr[1] - alp[1], tr[2] - alp[2]]);
+          const sy0 = fy + Hi * ebar;
+          const phi = w => lamP[0] * w[0] * w[0] + lamP[1] * w[1] * w[1] + lamP[2] * w[2] * w[2];
+          if (Math.sqrt(phi(xt)) - Math.sqrt(2 / 3) * sy0 <= 1e-10 * fy){
+            sig = tr;
+          } else {
+            yielded = true;
+            const xiOf = g => xt.map((v, i) => v / (1 + g * (lamP[i] * lamC[i] + 2 / 3 * Hk)));
+            const gfun = g => {
+              const w = xiOf(g), q = Math.sqrt(phi(w));
+              return q - Math.sqrt(2 / 3) * (sy0 + Hi * g * Math.sqrt(2 / 3) * q);
+            };
+            let lo = 0, hi = 1e-12;
+            while (gfun(hi) > 0) hi *= 2;
+            for (let k = 0; k < 100; k++){
+              const mid = 0.5 * (lo + hi);
+              if (gfun(mid) > 0) lo = mid; else hi = mid;
+              if (hi - lo <= 1e-14 * hi) break;
+            }
+            const g = 0.5 * (lo + hi);
+            const w = xiOf(g);
+            const Pw = w.map((v, i) => lamP[i] * v);
+            // 背応力（面外成分を差し引いた平面応力表現）と応力の更新
+            const dA = fromE(w.map(v => 2 / 3 * Hk * g * v));
+            const dS = fromE(Pw.map((v, i) => lamC[i] * g * v));
+            alp = [alp[0] + dA[0], alp[1] + dA[1], alp[2] + dA[2]];
+            sig = [tr[0] - dS[0], tr[1] - dS[1], tr[2] - dS[2]];
+            ebar += g * Math.sqrt(2 / 3 * phi(w));
+          }
+          epsN = eps.slice();
+          return sig;
+        },
+        get yielded(){ return yielded; }
+      };
+    };
+  }
+
+  function convert(rows, E, nu, fy, p, hard){
+    const nCol = Math.max(...rows.map(r => r.length));
+    const nSet = Math.floor(nCol / 3);
+    const newMat = makeMaterial(E, nu, fy, p, hard);
+    const mats = Array.from({length:nSet}, newMat);
+    const st = Array.from({length:nSet}, () => ({n:0, vm:-Infinity, s1:-Infinity, s2:Infinity}));
+    let bad = 0;
+    const out = rows.map(r => {
+      const o = [];
+      for (let k = 0; k < nSet; k++){
+        const c = [r[3 * k], r[3 * k + 1], r[3 * k + 2]];
+        if (c.some(v => v === undefined || v === '')){ o.push('', '', '', '', '', '', ''); continue; }
+        const v = c.map(Number);
+        if (!v.every(isFinite)){ o.push('', '', '', '', '', '', ''); bad++; continue; }
+        const [ea, eb, ec] = v.map(x => x * 1e-6);
+        const s = mats[k].step([ea, ec, 2 * eb - ea - ec]);
+        const cen = (s[0] + s[1]) / 2, rad = Math.hypot((s[0] - s[1]) / 2, s[2]);
+        const s1 = cen + rad, s2 = cen - rad;
+        const th = 0.5 * Math.atan2(2 * s[2], s[0] - s[1]) * 180 / Math.PI;
+        const vm = Math.sqrt(s[0] * s[0] - s[0] * s[1] + s[1] * s[1] + 3 * s[2] * s[2]);
+        const t = st[k]; t.n++;
+        t.vm = Math.max(t.vm, vm); t.s1 = Math.max(t.s1, s1); t.s2 = Math.min(t.s2, s2);
+        o.push(fmt(s[0]), fmt(s[1]), fmt(s[2]), fmt(s1), fmt(s2), fmt(th), fmt(vm));
+      }
+      return o;
+    });
+    st.forEach((t, k) => t.yld = mats[k].yielded);
+    return {out, st, bad, nSet, extra: nCol % 3};
+  }
+
+  function fmt(v){ const r = Math.round(v * 1000) / 1000; return String(Object.is(r, -0) ? 0 : r); }
+  function f1(v){ return isFinite(v) ? (Math.round(v * 10) / 10).toString() : '−'; }
+  function hide(){ $('result').classList.add('hidden'); }
+
+  function run(){
+    if (!rawRows) return;
+    const E = parseFloat($('E').value), nu = parseFloat($('nu').value), fy = parseFloat($('fy').value);
+    const p = parseFloat($('p').value), hard = $('hard').value;
+    if (!(E > 0)){ setMsg('ヤング係数に正の値を入力してください。', true); hide(); return; }
+    if (!(nu >= 0 && nu < 0.5)){ setMsg('ポアソン比は 0 以上 0.5 未満で入力してください。', true); hide(); return; }
+    if (!(fy > 0)){ setMsg('降伏強度に正の値を入力してください。', true); hide(); return; }
+    if (!(p >= 0 && p < 1)){ setMsg('剛性比 E2/E は 0 以上 1 未満で入力してください（推奨値：0）。', true); hide(); return; }
+    const {out, st, bad, nSet, extra} = convert(rawRows, E, nu, fy, p, hard);
+    if (nSet === 0){ setMsg('列数が3未満です。a, b, c の3列を1組として入力してください。', true); hide(); return; }
+    const head = [];
+    for (let k = 1; k <= nSet; k++) ['sx','sy','txy','s1','s2','theta','seq'].forEach(h => head.push(`R${k}_${h}`));
+    outCsv = [head.join(',')].concat(out.map(r => r.join(','))).join('\r\n') + '\r\n';
+    let h = '<tr><th>組</th><th>データ数</th><th>最大 σ<sub>eq</sub></th><th>最大 σ<sub>1</sub></th><th>最小 σ<sub>2</sub></th></tr>';
+    st.forEach((t, k) => {
+      const cls = t.yld ? ' class="y"' : '';
+      h += `<tr><td${cls}>${k + 1}</td><td>${t.n}</td><td${cls}>${f1(t.vm)}</td><td>${f1(t.s1)}</td><td>${f1(t.s2)}</td></tr>`;
+    });
+    $('summary').innerHTML = h;
+    $('result').classList.remove('hidden');
+    setMsg(`${fileName}：${rawRows.length} 行 × ${nSet} 組を解析しました（応力は N/mm²）。` +
+           (extra ? ` 3の倍数に満たない末尾の ${extra} 列は無視しました。` : '') +
+           (bad ? ` 数値でないセルを含む ${bad} 箇所は空欄にしました。` : ''), false);
+  }
+
+  function load(file){
+    if (!file) return;
+    fileName = file.name;
+    const rd = new FileReader();
+    rd.onload = () => {
+      rawRows = parse(rd.result);
+      if (!rawRows.length){ setMsg('データが見つかりません。CSVの中身を確認してください。', true); rawRows = null; return; }
+      run();
+    };
+    rd.onerror = () => setMsg('ファイルを読み込めませんでした。', true);
+    rd.readAsText(file);
+  }
+
+  drop.addEventListener('click', () => fileIn.click());
+  drop.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' '){ e.preventDefault(); fileIn.click(); } });
+  fileIn.addEventListener('change', () => { load(fileIn.files[0]); fileIn.value = ''; });
+  ['dragenter','dragover'].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.add('over'); }));
+  ['dragleave','drop'].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.remove('over'); }));
+  drop.addEventListener('drop', e => load(e.dataTransfer.files[0]));
+  ['E','nu','fy','p'].forEach(id => $(id).addEventListener('input', run));
+  $('hard').addEventListener('change', run);
+
+  $('dl').addEventListener('click', () => {
+    const blob = new Blob([outCsv], {type:'text/csv'});
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = fileName.replace(/\.[^.]+$/, '') + '_rosette.csv';
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  });
+})();
+</script>
+</body>
+</html>
