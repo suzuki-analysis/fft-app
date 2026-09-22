@@ -3,16 +3,19 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;600&display=swap" rel="stylesheet">
 <title>ファイバーモデルによる断面解析</title>
 <style>
 :root{
   --ink:#1b2430; --ink-2:#55606e; --paper:#ffffff; --rule:#cfd3d8;
-  --accent:#2f5d50; --accent-soft:#e7efec; --warn:#9a4b2f;
+  --accent:#1b2430; --accent-soft:#eceef0; --warn:#1b2430;
   box-sizing:border-box;
 }
 *,*::before,*::after{box-sizing:inherit}
 body{margin:0;background:var(--paper);color:var(--ink);
-  font-family:"Hiragino Kaku Gothic ProN","Yu Gothic",Meiryo,sans-serif;font-size:15px;line-height:1.6}
+  font-family:"Noto Sans JP","Hiragino Kaku Gothic ProN",Meiryo,sans-serif;font-size:15px;line-height:1.6}
 .wrap{max-width:1200px;margin:0 auto;padding:24px 20px 60px}
 h1{font-size:21px;font-weight:600;margin:0 0 2px}
 .sub{color:var(--ink-2);margin:0 0 18px;font-size:14px}
@@ -36,7 +39,7 @@ button.sm{background:#fff;border:1px solid var(--rule);padding:2px 10px;font-siz
 button.dl{background:#fff;color:var(--accent);border:1px solid var(--accent);padding:5px 12px;font-size:13px}
 button:disabled{opacity:.4;cursor:not-allowed}
 .status{font-size:13px;color:var(--ink-2);margin-top:8px;min-height:1.3em}
-.status.err{color:var(--warn)}
+.status.err{color:var(--warn);font-weight:600}
 .hidden{display:none}
 svg.plot{width:100%;display:block}
 .ttl{font-size:13px;color:var(--ink-2);margin:12px 0 2px}
@@ -71,6 +74,7 @@ ul.notes{margin:6px 0 0;padding-left:1.2em;font-size:12.5px;color:var(--ink-2)}
     <table class="bars"><thead><tr><th>上端から (mm)</th><th>本数</th><th>径 (mm)</th><th></th></tr></thead>
       <tbody id="barRows"></tbody></table>
     <div class="row" style="margin-top:4px"><button class="sm" id="addBar" type="button">段を追加</button></div>
+    <ul class="notes" style="margin-top:0"><li>径は丸鋼として扱い，面積は π·d²/4 で計算します（異形鉄筋の公称断面積ではありません）</li></ul>
   </div>
 
   <div class="panel" id="stlP">
@@ -128,7 +132,7 @@ ul.notes{margin:6px 0 0;padding-left:1.2em;font-size:12.5px;color:var(--ink-2)}
     <ul class="notes">
       <li>平面保持。コンクリートの引張は ft まで直線，その後は選択した引張軟化モデル。鋼材はバイリニア（引張・圧縮対称）</li>
       <li>横補強筋の中心線の内側をコア（拘束域），外側をかぶりとします。横補強筋も鋼管もない場合はコアを設けません</li>
-      <li>単調載荷のため，材料は除荷を考えない非線形弾性として扱います</li>
+      <li>単調載荷を前提とし，材料の応力はそのときのひずみだけで決まるものとして扱います（除荷の履歴は考えません）</li>
       <li>要素は約 10 mm の帯に自動分割します</li>
       <li>縁ひずみが ±0.06 に達した時点でも計算を終了します</li>
     </ul>
@@ -509,7 +513,7 @@ function ticks(lo, hi){
   // 目盛り間隔：幅/8 以上となる 1・2・5×10^n の最小値
   const span = hi - lo, raw = (span || 1) / 8, mag = Math.pow(10, Math.floor(Math.log10(raw)));
   const c = [1, 2, 5, 10].map(k => k * mag).find(k => k >= raw);
-  const o = []; for (let v = Math.ceil(lo / c) * c; v <= hi + 1e-9 * c; v += c) o.push(+v.toPrecision(10));
+  const o = []; for (let k = Math.ceil(lo / c - 1e-9); k * c <= hi + 1e-9 * c; k++) o.push(+(k * c).toPrecision(10));
   return o;
 }
 function frame(W, H, m, xlo, xhi, ylo, yhi, xl, yl){

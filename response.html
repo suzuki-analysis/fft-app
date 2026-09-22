@@ -3,16 +3,19 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;600&display=swap" rel="stylesheet">
 <title>1質点系の時刻歴応答解析</title>
 <style>
 :root{
   --ink:#1b2430; --ink-2:#55606e; --paper:#ffffff; --panel:#ffffff;
-  --rule:#cfd3d8; --accent:#2f5d50; --accent-soft:#e7efec; --warn:#9a4b2f;
+  --rule:#cfd3d8; --accent:#1b2430; --accent-soft:#eceef0; --warn:#1b2430;
   box-sizing:border-box;
 }
 *,*::before,*::after{box-sizing:inherit}
 body{margin:0;background:var(--paper);color:var(--ink);
-  font-family:"Hiragino Kaku Gothic ProN","Yu Gothic",Meiryo,sans-serif;
+  font-family:"Noto Sans JP","Hiragino Kaku Gothic ProN",Meiryo,sans-serif;
   font-size:15px;line-height:1.65}
 .wrap{max-width:1180px;margin:0 auto;padding:24px 20px 60px}
 h1{font-size:21px;font-weight:600;margin:0 0 2px}
@@ -38,7 +41,7 @@ button.run,button.dl{background:var(--accent);color:#fff;border:none;padding:9px
 button.dl{background:#fff;color:var(--accent);border:1px solid var(--accent);font-weight:400;padding:6px 14px}
 button:disabled{opacity:.4;cursor:not-allowed}
 .status{font-size:13px;color:var(--ink-2);margin-top:8px;min-height:1.3em}
-.status.err{color:var(--warn)}
+.status.err{color:var(--warn);font-weight:600}
 svg.plot{width:100%;display:block}
 .hidden{display:none}
 .empty{color:var(--ink-2);font-size:14px;padding:40px 0;text-align:center}
@@ -265,15 +268,14 @@ function refresh(){
     if (rl === 'bilinear') n.push('移動硬化。除荷は初期剛性で，'
       + (sk === 'tri' ? '折点が2つあるため勾配が2段階で変わります' : '骨格曲線と平行に移動します'));
     if (rl === 'origin') n.push('除荷後は原点へ向かいます');
-    if (rl === 'peak') n.push('除荷の開始から逆方向の既往最大点を指向します（'
-      + (sk === 'tri' ? 'PO3' : 'PO2') + '）');
+    if (rl === 'peak') n.push('除荷を始めた点から，反対側でこれまでに経験した最大の点へ直線で向かいます');
     if (rl === 'slip') n.push(sk === 'tri'
-      ? '除荷は K0 → αK0 → βK0 と折れて d0 へ，再載荷は βK0 → αK0 → 最大点指向'
-      : '除荷は K0 → βK0 と折れて d0 へ，再載荷は βK0 → 最大点指向');
-    if (rl === 'takeda') n.push('武田モデル（' + (sk === 'tri' ? 'CP3' : 'CP2')
-      + '）。除荷剛性 Ku = Kyc(δy/δm)^γ，下限 Kmc');
+      ? '除荷は勾配を K0 → αK0 → βK0 と変えながら d0 へ下がり，原点付近を低い剛性で通過したあと，αK0 で立ち上がって反対側の最大の点へ向かいます'
+      : '除荷は勾配を K0 → βK0 と変えながら d0 へ下がり，原点付近を低い剛性で通過したあと，反対側の最大の点へ向かいます');
+    if (rl === 'takeda') n.push('武田モデル。除荷の剛性は，これまでに経験した最大変形 δm が大きいほど低くなり，'
+      + '(δy/δm)^γ に比例して下がります（下がり過ぎないよう下限あり）');
   }
-  n.push('Newmark-β 法（β = 1/4），剛性が変わる点でステップを分割します');
+  n.push('時間積分は Newmark-β 法（平均加速度法，β = 1/4）。各時間ステップで，力の釣合いを繰返し計算で満たします');
   $('notes').innerHTML = n.map(t => '<li>' + t + '</li>').join('');
   $('out').classList.add('hidden'); $('empty').classList.remove('hidden');
   drawPreview();
@@ -758,11 +760,11 @@ function show(){
 
 const FONT = 'font-family="Arial, Helvetica, sans-serif" font-style="italic"';
 function ticks(lo, hi){
-  const span = hi - lo, st = Math.pow(10, Math.floor(Math.log10(span || 1)) - 1);
-  const c = [1, 2, 5, 10].map(k => k * st).find(k => span / k <= 8) || st;
-  const out = [];
-  for (let v = Math.ceil(lo / c) * c; v <= hi + 1e-9; v += c) out.push(v);
-  return out;
+  // 目盛り間隔：幅/8 以上となる 1・2・5×10^n の最小値
+  const span = hi - lo, raw = (span || 1) / 8, mag = Math.pow(10, Math.floor(Math.log10(raw)));
+  const c = [1, 2, 5, 10].map(k => k * mag).find(k => k >= raw);
+  const o = []; for (let k = Math.ceil(lo / c - 1e-9); k * c <= hi + 1e-9 * c; k++) o.push(+(k * c).toPrecision(10));
+  return o;
 }
 function frame(sv, W, H, m, xlo, xhi, ylo, yhi, xlab, ylab){
   const iw = W - m.l - m.r, ih = H - m.t - m.b;
@@ -797,7 +799,7 @@ function plotT(sv, x, y, xlab, ylab){
   const stp = Math.max(1, Math.floor(n / 4000));
   for (let i = 0; i < n; i += stp) d += (i ? 'L' : 'M') + X(x[i]).toFixed(1) + ' ' + Y(y[i]).toFixed(1) + ' ';
   sv.setAttribute('viewBox', '0 0 ' + W + ' ' + H);
-  sv.innerHTML = g + '<path d="' + d + '" fill="none" stroke="#2f5d50" stroke-width="1"/>';
+  sv.innerHTML = g + '<path d="' + d + '" fill="none" stroke="#1b2430" stroke-width="1"/>';
 }
 function plotE(sv, t, r){
   const W = 760, H = 240, m = {l: 74, r: 14, t: 12, b: 34}, n = r.n;
@@ -806,16 +808,16 @@ function plotE(sv, t, r){
   const {g, X, Y} = frame(sv, W, H, m, 0, t[n - 1] || 1, 0, hi * 1.05 || 1,
     'Time (s)', 'Energy (kN\u00b7cm)');
   const stp = Math.max(1, Math.floor(n / 3000));
-  const line = (get, col) => {
+  const line = (get, col, dash) => {
     let d = '';
     for (let i = 0; i < n; i += stp) d += (i ? 'L' : 'M') + X(t[i]).toFixed(1) + ' '
       + Y(Math.min(get(i), hi * 1.05)).toFixed(1) + ' ';
-    return '<path d="' + d + '" fill="none" stroke="' + col + '" stroke-width="1"/>';
+    return '<path d="' + d + '" fill="none" stroke="' + col + '" stroke-width="1"' + (dash ? ' stroke-dasharray="' + dash + '"' : '') + '/>';
   };
-  const items = [['Input energy', '#1b2430'],
-                 ['Damping + Hysteretic + Elastic + Kinetic', '#2f5d50'],
-                 ['Damping + Hysteretic', '#9a4b2f'],
-                 ['Damping', '#3b5a8c']];
+  const items = [['Input energy', '#1b2430', ''],
+                 ['Damping + Hysteretic + Elastic + Kinetic', '#55606e', '6 3'],
+                 ['Damping + Hysteretic', '#55606e', '2 2'],
+                 ['Damping', '#8b939c', '']];
   const bw = 250, bh = items.length * 15 + 8;
   const bx = W - m.r - bw - 8, by = m.t + (H - m.t - m.b) * 0.22;   // 右側中段
   let lg = '<rect x="' + bx + '" y="' + by + '" width="' + bw + '" height="' + bh
@@ -823,16 +825,16 @@ function plotE(sv, t, r){
   items.forEach((it, k) => {
     const yy = by + 12 + k * 15;
     lg += '<line x1="' + (bx + 6) + '" y1="' + (yy - 3) + '" x2="' + (bx + 26) + '" y2="' + (yy - 3)
-      + '" stroke="' + it[1] + '" stroke-width="1.4"/>'
+      + '" stroke="' + it[1] + '" stroke-width="1.4"' + (it[2] ? ' stroke-dasharray="' + it[2] + '"' : '') + '/>'
       + '<text x="' + (bx + 32) + '" y="' + yy + '" font-size="11" fill="#1b2430" ' + FONT + '>'
       + it[0] + '</text>';
   });
   sv.setAttribute('viewBox', '0 0 ' + W + ' ' + H);
   sv.innerHTML = g
-    + line(i => r.Ed[i], '#3b5a8c')
-    + line(i => r.Ed[i] + r.Eh[i], '#9a4b2f')
-    + line(i => r.Ed[i] + r.Eh[i] + r.Ek[i] + r.Es[i], '#2f5d50')
-    + line(i => r.Ei[i], '#1b2430')
+    + line(i => r.Ed[i], '#8b939c', '')
+    + line(i => r.Ed[i] + r.Eh[i], '#55606e', '2 2')
+    + line(i => r.Ed[i] + r.Eh[i] + r.Ek[i] + r.Es[i], '#55606e', '6 3')
+    + line(i => r.Ei[i], '#1b2430', '')
     + lg;
 }
 
@@ -848,7 +850,7 @@ function plotXY(sv, x, y, xlab, ylab){
   if (ylo < 0 && yhi > 0) ax += '<line x1="' + m.l + '" y1="' + Y(0) + '" x2="' + (W - m.r) + '" y2="'
     + Y(0) + '" stroke="#9aa1a8"/>';
   sv.setAttribute('viewBox', '0 0 ' + W + ' ' + H);
-  sv.innerHTML = g + ax + '<path d="' + d + '" fill="none" stroke="#9a4b2f" stroke-width="0.9"/>';
+  sv.innerHTML = g + ax + '<path d="' + d + '" fill="none" stroke="#1b2430" stroke-width="0.9"/>';
 }
 
 /* ---------- 書き出し ---------- */
