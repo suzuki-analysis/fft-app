@@ -1,0 +1,2497 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;600&display=swap" rel="stylesheet">
+<title>LANCE｜ファイバーモデルによる断面・部材の解析</title>
+<style>
+:root{
+  --ink:#1b2430; --ink-2:#55606e; --paper:#ffffff; --rule:#cfd3d8;
+  --accent:#1b2430; --accent-soft:#eceef0; --warn:#1b2430;
+  box-sizing:border-box;
+}
+*,*::before,*::after{box-sizing:inherit}
+body{margin:0;background:var(--paper);color:var(--ink);
+  font-family:"Noto Sans JP","Hiragino Kaku Gothic ProN",Meiryo,sans-serif;font-size:15px;line-height:1.6}
+.wrap{max-width:1200px;margin:0 auto;padding:24px 20px 60px}
+h1{font-size:21px;font-weight:600;margin:0 0 2px}
+.sub{color:var(--ink-2);margin:0 0 18px;font-size:14px}
+.cols{display:grid;grid-template-columns:380px minmax(0,1fr);gap:20px;align-items:start}
+@media (max-width:860px){.cols{grid-template-columns:1fr}}
+.panel{border:1px solid var(--rule);padding:14px 16px;margin-bottom:14px}
+.panel h2{font-size:14px;font-weight:600;margin:0 0 10px;padding-bottom:6px;border-bottom:1px solid var(--rule)}
+.row{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:7px}
+.lb{width:150px;flex:none;color:var(--ink-2);font-size:14px}
+.unit{color:var(--ink-2);font-size:13px}
+input[type=number]{width:84px;padding:4px 6px;border:1px solid var(--rule);font:inherit;color:inherit}
+select{padding:4px 6px;border:1px solid var(--rule);font:inherit;color:inherit;background:#fff}
+input:focus,select:focus,button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+table.bars{border-collapse:collapse;font-size:13px;width:100%}
+table.bars th{color:var(--ink-2);font-weight:600;text-align:left;padding:2px 4px}
+table.bars td{padding:2px 4px}
+table.bars input{width:70px}
+button{font:inherit;cursor:pointer}
+button.run{background:var(--accent);color:#fff;border:none;padding:8px 16px;font-weight:600}
+button.sm{background:#fff;border:1px solid var(--rule);padding:2px 10px;font-size:13px}
+button.dl{background:#fff;color:var(--accent);border:1px solid var(--accent);padding:5px 12px;font-size:13px}
+button:disabled{opacity:.4;cursor:not-allowed}
+.status{font-size:13px;color:var(--ink-2);margin-top:8px;min-height:1.3em}
+.status.err{color:var(--warn);font-weight:600}
+.hidden{display:none}
+svg.plot{width:100%;display:block}
+.ttl{font-size:13px;color:var(--ink-2);margin:12px 0 2px}
+table.sum{width:100%;border-collapse:collapse;font-size:13.5px}
+table.sum th,table.sum td{border-bottom:1px solid var(--rule);padding:4px 8px;text-align:right}
+table.sum th:first-child,table.sum td:first-child{text-align:left}
+table.sum th{font-weight:600;color:var(--ink-2)}
+ul.notes{margin:6px 0 0;padding-left:1.2em;font-size:12.5px;color:var(--ink-2)}
+.chk{display:inline-flex;align-items:center;gap:6px;font-size:14px}
+
+/* アプリ名の見出し */
+.appid{display:flex;align-items:baseline;gap:14px;flex-wrap:wrap;margin:0 0 1px;font-weight:400}
+.appid .nm{font-family:Arial,Helvetica,sans-serif;font-weight:700;font-style:italic;font-size:30px;letter-spacing:.06em;line-height:1.15}
+.appid .jp{font-size:16px;font-weight:600;letter-spacing:.02em}
+.apphd{border-left:5px solid #1b2430;padding-left:14px;margin:0 0 16px}
+.appfull{font-family:Arial,Helvetica,sans-serif;font-style:italic;font-size:11.5px;letter-spacing:.08em;
+  color:#55606e;margin:3px 0 0;padding-bottom:10px;border-bottom:1px solid #cfd3d8}
+.appfull b{font-weight:700;color:#1b2430}
+
+.cfgBtn{font:inherit;font-size:12.5px;padding:3px 10px;border:1px solid #cfd3d8;background:#fff;color:#1b2430;cursor:pointer}
+.cfgBtn:hover{border-color:#1b2430}
+#cfgName{font-family:Arial,Helvetica,sans-serif;color:#1b2430}
+.kind{display:flex;flex-wrap:wrap;margin:0 0 10px}
+.kind.hidden{display:none}
+.grid4{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0 20px;align-items:start}
+.gcol{min-width:0}
+.xc{width:84px;font-size:12.5px;color:var(--ink-2);font-weight:600}
+#stlP .x2.off{display:none}
+@media (max-width:860px){.grid4{grid-template-columns:1fr}}
+table.stl select,#regT select{padding:3px 4px;font-size:13px}
+.noHy .hcol{display:none}
+#regT .cl{display:inline-block;min-width:26px;font-size:12px;color:var(--ink-2);font-family:Arial,Helvetica,sans-serif;font-style:italic}
+#regT input[id^="ku_"],#regT input[id^="tp_"]{width:60px}
+.alC.off{display:none}
+.fgOff{display:none}
+.obar{border:1px solid var(--rule);background:#fafbfb;padding:6px 10px;margin:0 0 10px;font-size:13px}
+.obRow{display:flex;flex-wrap:wrap;gap:4px 14px;align-items:center}
+.obT{font-weight:600;color:var(--ink-2)}
+.obD{margin-top:4px}.obD summary{cursor:pointer;color:var(--ink-2);font-weight:600}
+.obD label.ob{margin:2px 12px 2px 0}
+label.ob{font-size:13px}
+.grid3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+@media (max-width:700px){.grid3{grid-template-columns:1fr}}
+.caseRow{gap:8px}.cases{display:inline-flex;flex-wrap:wrap;gap:6px;align-items:center}
+.case{display:inline-flex;align-items:center;gap:4px;border:1px solid var(--rule);padding:2px 4px;font-size:12.5px}
+.case input{width:90px;padding:2px 4px;border:1px solid var(--rule);font:inherit;font-size:12.5px}
+.case .sw{display:inline-block;width:22px;height:0}
+#inGrid table.reg{width:auto}
+#inGrid table.reg td,#inGrid table.reg th{padding:2px 8px 2px 0}
+table.reg input{width:64px;padding:4px 4px}
+table.reg td:first-child{font-size:12.5px}
+.kind input{position:absolute;opacity:0;pointer-events:none}
+.kind label{border:1px solid var(--rule);padding:7px 16px;cursor:pointer;font-size:14px;font-weight:600;color:var(--ink-2);background:#fff;margin-right:-1px}
+.kind input:checked+label{background:var(--accent);color:#fff;border-color:var(--accent)}
+.kind input:focus-visible+label{outline:2px solid var(--accent);outline-offset:2px}
+</style>
+</head>
+<body>
+<script>window.__figAR = 0;
+window.figW = function(W0, H, m){ return window.__figAR > 0 ? Math.round((H - m.t - m.b) * window.__figAR + m.l + m.r) : W0; };</script>
+<div class="wrap">
+<div class="apphd">
+<h1 class="appid"><span class="nm">LANCE</span><span class="jp">ファイバーモデルによる断面・部材の解析</span></h1>
+<p class="appfull"><b>L</b>ayered <b>AN</b>alysis of <b>C</b>omposite <b>E</b>lements</p>
+</div>
+<div id="cfgBar" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;font-size:12.5px;color:#55606e;margin:0 0 16px">
+<span>設定</span><button id="cfgOpen" type="button" class="cfgBtn">開く</button><button id="cfgSave" type="button" class="cfgBtn">上書き保存</button><button id="cfgSaveAs" type="button" class="cfgBtn">名前を付けて保存</button><input type="file" id="cfgFile" accept=".lnc,.slc,.shft" style="display:none"><span id="cfgName"></span><span id="cfgMsg"></span></div>
+<div class="kind" role="radiogroup" aria-label="解析の種類"><input type="radio" name="kind" id="kindS" value="S" checked><label for="kindS">断面の解析（M-φ・M-N）</label><input type="radio" name="kind" id="kindB" value="B"><label for="kindB">部材の解析（Q-δ）</label></div>
+<div class="kind" id="ldSel" role="radiogroup" aria-label="載荷方法"><input type="radio" name="ldk" id="ldMono" value="mono" checked><label for="ldMono">単調載荷</label><input type="radio" name="ldk" id="ldCyc" value="cyc"><label for="ldCyc">繰返し載荷</label></div>
+<p class="sub" id="subS">RC・SRC・CES・角形 CFT 断面の M-φ 関係と M-N 相互作用図を求めます（一軸曲げ，単調載荷）。鉄骨を「なし」，主筋を 0 段にすれば各断面を表せます。</p>
+<p class="sub hidden" id="subB">部材を材軸方向に等分し，各節点に置いたファイバー断面から曲率分布を求め，せん断力 Q と変位 δ の関係を解析します。片持ちと逆対称（両端固定・水平移動）を選べます。変位制御で，単調載荷・繰返し載荷と，一定軸力・変動軸力に対応します。</p>
+
+<div id="inGrid">
+<div class="grid4">
+<div class="gcol">
+  <div class="panel" id="pnl1">
+    <h2>1. 鉄筋コンクリート断面</h2>
+    <div class="row"><label class="lb" for="b">幅 b</label><input type="number" id="b" value="300"><span class="unit">mm</span></div>
+    <div class="row"><label class="lb" for="D">せい D</label><input type="number" id="D" value="300"><span class="unit">mm</span></div>
+    <ul class="notes" style="margin-top:0"><li>鋼管がある場合は b×D を鋼管の外寸とします</li></ul>
+    <div class="ttl">主筋（段ごと，上端からの距離で指定）</div>
+    <table class="bars"><thead><tr><th>上端から (mm)</th><th>本数</th><th>径 (mm)</th><th></th></tr></thead>
+      <tbody id="barRows"></tbody></table>
+    <div class="row" style="margin-top:4px"><button class="sm" id="addBar" type="button">段を追加</button></div>
+    <ul class="notes" style="margin-top:0"><li>主筋の断面積は径 d から π·d²/4 で求めます。異形鉄筋は公称直径を入力してください</li></ul>
+  </div>
+</div>
+<div class="gcol">
+  <div class="panel" id="stlP">
+    <h2>2. 鋼材断面</h2>
+    <div class="ttl" style="margin-top:0">内蔵鉄骨</div>
+    <div class="row"><label class="lb" for="sh">形状</label>
+      <select id="sh"><option value="none">なし</option><option value="H" selected>H形鋼</option><option value="X">十字形鋼</option></select></div>
+    <div id="stlDim">
+    <div class="row" id="axR"><label class="lb" for="ax">曲げの軸</label>
+      <select id="ax"><option value="strong">強軸</option><option value="weak">弱軸</option></select></div>
+    <div class="row hidden" id="xsameR"><label class="chk"><input type="checkbox" id="xsame" checked> 弱軸側は強軸側と同じ</label></div>
+    <div class="row hidden" id="xHead"><span class="lb"></span><span class="xc">強軸側</span><span class="xc x2">弱軸側</span></div>
+    <div class="row"><label class="lb" for="Hs">せい H</label><input type="number" id="Hs" value="200"><input type="number" id="Hs2" value="200" class="x2" aria-label="弱軸側のせい H"><span class="unit">mm</span></div>
+    <div class="row"><label class="lb" for="Bs">フランジ幅 B</label><input type="number" id="Bs" value="100"><input type="number" id="Bs2" value="100" class="x2" aria-label="弱軸側のフランジ幅 B"><span class="unit">mm</span></div>
+    <div class="row"><label class="lb" for="tw">ウェブ厚 tw</label><input type="number" id="tw" value="5.5"><input type="number" id="tw2" value="5.5" class="x2" aria-label="弱軸側のウェブ厚 tw"><span class="unit">mm</span></div>
+    <div class="row"><label class="lb" for="tf">フランジ厚 tf</label><input type="number" id="tf" value="8"><input type="number" id="tf2" value="8" class="x2" aria-label="弱軸側のフランジ厚 tf"><span class="unit">mm</span></div>
+    <ul class="notes hidden" id="xNote" style="margin-top:0"><li>強軸側：ウェブが曲げの方向に立つ H 形鋼。弱軸側：それと直交する H 形鋼</li></ul>
+    </div>
+    <div class="ttl">鋼管（外周）</div>
+    <div class="row"><label class="lb" for="tube">形状</label>
+      <select id="tube"><option value="none">なし</option><option value="sq">角形鋼管（CFT）</option></select></div>
+    <div id="tubeP" class="hidden">
+      <div class="row"><label class="lb" for="tt">板厚 t</label><input type="number" id="tt" value="6"><span class="unit">mm</span></div>
+      <ul class="notes" style="margin-top:0"><li>外寸は 1. の b×D とし，角の丸みは無視します</li></ul>
+    </div>
+  </div>
+</div>
+</div>
+  <div class="panel" id="pnl3">
+    <h2>3. コンクリート材料特性</h2>
+    <div class="row"><label class="lb" for="ecm">ヤング係数 Ec</label>
+      <select id="ecm"><option value="in">直接入力</option><option value="aij">AIJ 式</option></select></div>
+    <div class="row" id="EcR"><label class="lb" for="Ec">Ec</label><input type="number" id="Ec" value="25000"><span class="unit">N/mm²（全領域で共通）</span></div>
+    <div id="aijP" class="hidden">
+      <div class="row"><label class="lb" for="fc">圧縮強度 σB</label><input type="number" id="fc" value="30"><span class="unit">N/mm²</span></div>
+      <div class="row"><label class="lb" for="gam">単位体積重量 γ</label><input type="number" id="gam" value="23" step="0.5"><span class="unit">kN/m³</span></div>
+      <div class="unit" id="EcInfo" style="font-size:12px;margin:-2px 0 6px"></div>
+    </div>
+    <div class="ttl">応力-ひずみ関係（領域ごと）</div>
+    <div class="hidden"><!-- 旧設定ファイル（全領域共通の値）の読込用：変更すると全行に反映 -->
+      <select id="cyr"><option value="yassin">Yassin</option><option value="kj">Karsan-Jirsa</option><option value="origin">原点指向</option><option value="mander">Mander</option></select>
+      <input type="number" id="ku" value="0.1"><input type="number" id="ft" value="1.8">
+      <select id="ts"><option value="lin">直線軟化</option><option value="om" selected>出雲・島・岡村</option></select>
+      <input type="number" id="etu" value="0.001"><input type="number" id="tsc" value="1.0"></div>
+    <div style="overflow-x:auto">
+    <table class="bars reg" id="regT"><thead><tr><th>領域</th><th>σp (N/mm²)</th><th>εp</th><th>λ</th><th>μ</th>
+      <th class="hcol">履歴モデル</th><th class="hcol">履歴の係数</th><th>ft (N/mm²)</th><th>引張軟化モデル</th><th>軟化の係数</th></tr></thead><tbody>
+      <tr id="rw_cv"><td>カバー（非拘束）</td><td><input type="number" id="sp_cv" value="30" step="1"></td><td><input type="number" id="ep_cv" value="0.002" step="0.0005"></td><td><input type="number" id="la_cv" value="0.2" step="0.05"></td><td><input type="number" id="mu_cv" value="3" step="0.5"></td><td class="hcol"><select id="cyr_cv"><option value="yassin" selected>Yassin</option><option value="kj">Karsan-Jirsa</option><option value="origin">原点指向</option></select></td><td class="hcol"><span class="cl" id="hl_cv">ku</span><input type="number" id="ku_cv" value="0.1" step="0.05"></td><td><input type="number" id="ft_cv" value="1.8" step="0.1"></td><td><select id="ts_cv"><option value="lin">直線軟化</option><option value="om" selected>出雲・島・岡村</option></select></td><td><span class="cl" id="tl_cv">c</span><input type="number" id="tp_cv" value="1.0" step="0.05"></td></tr>
+      <tr id="rw_tb"><td><label class="chk"><input type="checkbox" id="use_tb" checked> 鋼管で囲まれた領域</label></td><td><input type="number" id="sp_tb" value="36" step="1"></td><td><input type="number" id="ep_tb" value="0.003" step="0.0005"></td><td><input type="number" id="la_tb" value="0.8" step="0.05"></td><td><input type="number" id="mu_tb" value="5" step="0.5"></td><td class="hcol"><select id="cyr_tb"><option value="yassin" selected>Yassin</option><option value="kj">Karsan-Jirsa</option><option value="origin">原点指向</option></select></td><td class="hcol"><span class="cl" id="hl_tb">ku</span><input type="number" id="ku_tb" value="0.1" step="0.05"></td><td><input type="number" id="ft_tb" value="1.8" step="0.1"></td><td><select id="ts_tb"><option value="lin">直線軟化</option><option value="om" selected>出雲・島・岡村</option></select></td><td><span class="cl" id="tl_tb">c</span><input type="number" id="tp_tb" value="1.0" step="0.05"></td></tr>
+      <tr id="rw_hp"><td><label class="chk"><input type="checkbox" id="use_hp" checked> 帯筋で囲まれた領域</label></td><td><input type="number" id="sp_hp" value="33" step="1"></td><td><input type="number" id="ep_hp" value="0.0025" step="0.0005"></td><td><input type="number" id="la_hp" value="0.5" step="0.05"></td><td><input type="number" id="mu_hp" value="4" step="0.5"></td><td class="hcol"><select id="cyr_hp"><option value="yassin" selected>Yassin</option><option value="kj">Karsan-Jirsa</option><option value="origin">原点指向</option></select></td><td class="hcol"><span class="cl" id="hl_hp">ku</span><input type="number" id="ku_hp" value="0.1" step="0.05"></td><td><input type="number" id="ft_hp" value="1.8" step="0.1"></td><td><select id="ts_hp"><option value="lin">直線軟化</option><option value="om" selected>出雲・島・岡村</option></select></td><td><span class="cl" id="tl_hp">c</span><input type="number" id="tp_hp" value="1.0" step="0.05"></td></tr>
+      <tr id="rw_st"><td><label class="chk"><input type="checkbox" id="use_st" checked> 内蔵鉄骨で囲まれた領域</label></td><td><input type="number" id="sp_st" value="36" step="1"></td><td><input type="number" id="ep_st" value="0.003" step="0.0005"></td><td><input type="number" id="la_st" value="0.6" step="0.05"></td><td><input type="number" id="mu_st" value="4" step="0.5"></td><td class="hcol"><select id="cyr_st"><option value="yassin" selected>Yassin</option><option value="kj">Karsan-Jirsa</option><option value="origin">原点指向</option></select></td><td class="hcol"><span class="cl" id="hl_st">ku</span><input type="number" id="ku_st" value="0.1" step="0.05"></td><td><input type="number" id="ft_st" value="1.8" step="0.1"></td><td><select id="ts_st"><option value="lin">直線軟化</option><option value="om" selected>出雲・島・岡村</option></select></td><td><span class="cl" id="tl_st">c</span><input type="number" id="tp_st" value="1.0" step="0.05"></td></tr>
+    </tbody></table></div>
+    <ul class="notes"><li>圧縮：上昇域は Popovics 式 σ = σp·x·n / (n − 1 + xⁿ)，x = ε/εp，n = Ec / (Ec − σp/εp)。εp から μ·εp まで直線で λ·σp に下がり，その後は一定</li>
+      <li>履歴モデル：Yassin は除荷と再載荷が別の直線でループをつくる（ku：折れ点から除荷するときの剛性と Ec の比）。Karsan-Jirsa は残留ひずみまで直線で除荷し同じ直線で再載荷。原点指向は原点へ向かう直線。断面の解析（単調）では使わないため表示しません</li>
+      <li>引張：ft まで直線（ft = 0 で引張無視），その後は軟化モデル（直線軟化の係数は終点 εtu，出雲・島・岡村の係数は c）。引張側の除荷・再載荷は原点指向</li>
+      <li>重なる部分は 鋼管 ＞ 帯筋 ＞ 内蔵鉄骨 ＞ カバー の順に割り当てます。帯筋の領域は主筋の外面で囲まれた範囲，内蔵鉄骨の領域は H 形鋼で外接矩形，十字形鋼でフランジ端を結ぶ八角形です</li>
+      <li>チェックを外した領域はカバーと同じ扱いになります。領域の行は，鋼管・主筋・鉄骨があるときだけ表示します</li></ul>
+    <div class="hidden"><!-- 旧モデル（選択不可） -->
+      <select id="cm" disabled><option value="sakino">崎野・孫</option><option value="mander">Mander</option><option value="kp">修正 Kent-Park</option></select>
+      <input type="number" id="ke" value="0.75" disabled></div>
+  </div>
+  <div class="panel" id="pnl4">
+    <h2>4. 鋼材の材料特性</h2>
+    <div class="hidden"><!-- 旧設定ファイル（共通の Es・β）の読込用：変更すると全行に反映 -->
+      <input type="number" id="Es" value="205000"><input type="number" id="ph" value="0.01"></div>
+    <table class="bars reg stl"><thead><tr><th>鋼材</th><th>fy (N/mm²)</th><th>Es (N/mm²)</th><th>β</th><th>履歴モデル</th><th class="alC">α</th></tr></thead><tbody>
+      <tr id="sr_t"><td>鋼管</td><td><input type="number" id="fyt" value="325"></td><td><input type="number" id="Es_t" value="205000" style="width:84px"></td><td><input type="number" id="ph_t" value="0.01" step="0.005"></td><td><select id="hy_t"><option value="kin" selected>移動硬化</option><option value="iso">等方硬化</option><option value="mp">修正 Menegotto-Pinto</option><option value="ten">引張専用</option></select></td><td class="alC"><input type="number" id="al_t" value="1" step="0.05"></td></tr>
+      <tr id="sr_r"><td>主筋</td><td><input type="number" id="fyr" value="345"></td><td><input type="number" id="Es_r" value="205000" style="width:84px"></td><td><input type="number" id="ph_r" value="0.01" step="0.005"></td><td><select id="hy_r"><option value="kin" selected>移動硬化</option><option value="iso">等方硬化</option><option value="mp">修正 Menegotto-Pinto</option><option value="ten">引張専用</option></select></td><td class="alC"><input type="number" id="al_r" value="1" step="0.05"></td></tr>
+      <tr id="sr_f"><td>フランジ</td><td><input type="number" id="fyf" value="235"></td><td><input type="number" id="Es_f" value="205000" style="width:84px"></td><td><input type="number" id="ph_f" value="0.01" step="0.005"></td><td><select id="hy_f"><option value="kin" selected>移動硬化</option><option value="iso">等方硬化</option><option value="mp">修正 Menegotto-Pinto</option><option value="ten">引張専用</option></select></td><td class="alC"><input type="number" id="al_f" value="1" step="0.05"></td></tr>
+      <tr id="sr_w"><td>ウェブ</td><td><input type="number" id="fyw" value="235"></td><td><input type="number" id="Es_w" value="205000" style="width:84px"></td><td><input type="number" id="ph_w" value="0.01" step="0.005"></td><td><select id="hy_w"><option value="kin" selected>移動硬化</option><option value="iso">等方硬化</option><option value="mp">修正 Menegotto-Pinto</option><option value="ten">引張専用</option></select></td><td class="alC"><input type="number" id="al_w" value="1" step="0.05"></td></tr>
+    </tbody></table>
+    <ul class="notes"><li>β：降伏後の剛性比。α：見かけのヤング係数の低減係数（全モデル共通。剛性は α·Es，降伏後は β·α·Es，降伏ひずみは fy/(α·Es)。せん断剛性 GA には Es をそのまま使用）</li>
+      <li>修正 Menegotto-Pinto：R = R0 − a1·ξ/(a2 + ξ)，R0 = 20，a1 = 18.5，a2 = 0.15（等方硬化なし）。等方硬化：降伏応力が累積塑性ひずみに応じて拡大</li>
+      <li>引張専用：圧縮は負担せず，除荷は α·Es で応力 0 まで下がり，塑性ひずみを超えるまで応力 0（アンカーボルトなど）</li>
+      <li>行は，その鋼材があるときだけ表示します。断面の解析（単調）では履歴モデルの単調載荷の曲線を使います</li></ul>
+  </div>
+</div>
+
+<div class="cols">
+<div>
+  <div class="panel">
+    <h2 id="p5t">5. 部材と載荷</h2>
+    <div id="memA">
+    <div class="row"><label class="lb" for="mode">支持条件</label>
+      <select id="mode"><option value="cant">片持ち</option><option value="anti">逆対称（両端固定・水平移動）</option></select></div>
+    <div class="row"><label class="lb" for="L" id="Llb">部材長 L（せん断スパン）</label><input type="number" id="L" value="1200"><span class="unit">mm</span></div>
+    <div class="row"><label class="lb" for="nseg">材軸方向の分割数</label><input type="number" id="nseg" value="12" min="1" step="1"></div>
+    </div>
+    <div class="row"><label class="lb" for="N" id="Nlb">軸力 N（圧縮正）</label><input type="number" id="N" value="500"><span class="unit">kN</span></div>
+    <div id="memB">
+    <div class="row"><label class="chk"><input type="checkbox" id="vn"> 変動軸力を考慮する</label></div>
+    <div id="vnP" class="hidden">
+      <div class="row"><label class="lb" for="vnA">Q に対する係数 a</label><input type="number" id="vnA" value="1" step="0.1"><span class="unit">kN/kN</span></div>
+      <div class="row"><label class="lb" for="vnB">R に対する係数 b</label><input type="number" id="vnB" value="0" step="1000"><span class="unit">kN/rad</span></div>
+      <div class="row"><label class="lb" for="vnMax">上限 Nmax</label><input type="number" id="vnMax" value="1000"><span class="unit">kN</span></div>
+      <div class="row"><label class="lb" for="vnMin">下限 Nmin</label><input type="number" id="vnMin" value="0"><span class="unit">kN</span></div>
+      <ul class="notes" style="margin-top:0"><li>N = N0 + a·Q + b·R を Nmin～Nmax で頭打ちにします（N は圧縮正，Q・R は正載荷方向を正）</li>
+        <li>例：b = 10000 kN/rad なら R = 1/100 で +100 kN。Q だけ・R だけにするときは他方を 0 にします</li>
+        <li>各ステップで，N と Q がこの式を満たすまで収束計算します。軸力は材軸方向に一様とします</li></ul>
+    </div>
+    <div class="row"><label class="chk"><input type="checkbox" id="pd"> P-Δ 効果を考慮する</label></div>
+    <div class="row"><label class="chk"><input type="checkbox" id="pen"> 定着部の抜け出しによる回転を考慮する</label></div>
+    <div id="penP" class="hidden">
+      <div class="row"><label class="lb" for="lanc">定着長さ ld</label><input type="number" id="lanc" value="300"><span class="unit">mm</span></div>
+      <div class="row"><label class="lb" for="pdist">定着部のひずみ分布</label>
+        <select id="pdist"><option value="uni">定着端まで一定</option><option value="tri">三角形（定着端で 0）</option></select></div>
+      <ul class="notes" style="margin-top:0"><li>材端断面の引張側の外側の鋼材ひずみ ε から，伸び s = ε·ld（三角形は ε·ld/2）を求め，
+        圧縮縁（コンクリート端）まわりの回転 θ = s / dt とします（dt：その鋼材から圧縮縁までの距離）。
+        上下とも引張の場合は両方の寄与を足します。逆対称では両端に考慮します</li></ul>
+    </div>
+    <div class="row hidden"><label class="lb" for="ld">載荷方法</label>
+      <select id="ld"><option value="mono">単調</option><option value="cyc">繰返し</option></select></div>
+    <div class="row"><label class="lb" for="au">振幅の単位</label>
+      <select id="au"><option value="R">部材角 R（rad）</option><option value="mm">変位 δ（mm）</option></select></div>
+    <div class="row" id="ddRR"><label class="lb" for="ddR">部材角の刻み ΔR</label>
+      <input type="text" id="ddR" value="1/2000" style="width:84px;padding:4px 6px;border:1px solid #cfd3d8;font:inherit"><span class="unit">rad（1/2000 の形も可）</span></div>
+    <div class="row hidden" id="ddmmR"><label class="lb" for="dd">変位の刻み Δδ</label><input type="number" id="dd" value="0.5" step="0.1"><span class="unit">mm</span></div>
+    <div id="monoP">
+      <div class="row" id="dmaxRR"><label class="lb" for="dmaxR">最大部材角 Rmax</label>
+        <input type="text" id="dmaxR" value="1/20" style="width:84px;padding:4px 6px;border:1px solid #cfd3d8;font:inherit"><span class="unit">rad</span></div>
+      <div class="row hidden" id="dmaxmmR"><label class="lb" for="dmax">最大変位 δmax</label><input type="number" id="dmax" value="60"><span class="unit">mm</span></div>
+    </div>
+    <div id="cycP" class="hidden">
+      <table class="bars"><thead><tr><th>振幅（1/400 の形も可）</th><th>回数</th><th></th></tr></thead>
+        <tbody id="ampRows"></tbody></table>
+      <div class="row" style="margin-top:4px"><button class="sm" id="addAmp" type="button">振幅を追加</button></div>
+      <div class="unit" id="protInfo" style="font-size:12px"></div>
+    </div>
+    </div>
+    <div class="row" id="rtR"><label class="lb" for="rt">終了（最大耐力の）</label><input type="number" id="rt" value="0.8" step="0.05"><span class="unit">倍に低下</span></div>
+    <div class="row" style="gap:10px;margin-top:10px">
+      <button class="run" id="runM" type="button">M-φ を計算</button>
+      <button class="run" id="runN" type="button">M-N を計算</button>
+      <button class="run" id="runB" type="button">解析する</button>
+    </div>
+    <div class="status" id="status"></div>
+    <ul class="notes" id="notesS">
+      <li>平面保持。コンクリートの引張は ft まで直線，その後は選択した引張軟化モデル。鋼材はバイリニア（引張・圧縮対称）</li>
+      <li>コンクリートは「3. コンクリート材料特性」で選んだ領域ごとの応力-ひずみ関係を使います</li>
+      <li>単調載荷を前提とし，材料の応力はそのときのひずみだけで決まるものとして扱います（除荷の履歴は考えません）</li>
+      <li>要素は約 10 mm の帯に自動分割します</li>
+      <li>縁ひずみが ±0.06 に達した時点でも計算を終了します</li>
+    </ul>
+    <ul class="notes" id="notesB">
+      <li>固定端は完全固定。区間の両端（節点）に断面を置き，区間内の曲率を直線分布として曲げ変形を積分します</li>
+      <li>逆対称では，上端の回転が 0，先端の変位が δ となるよう，両端の断面の曲率を求めます（反曲点の位置は計算の結果として決まります）</li>
+      <li>せん断変形は弾性のみ：δs = Q·L / GA，GA = 5/6 ×（Gc·Ac + Gs·Aw），ポアソン比はコンクリート 0.2，鋼材 0.3</li>
+      <li>変位 δ を少しずつ与え，その変位になるよう固定端の断面の曲率を繰返し計算で求めます</li>
+      <li>繰返しでは，各振幅で「+振幅 → −振幅」を指定回数繰り返します</li>
+      <li>平面保持。コンクリートの除荷・再載荷は選択した繰返し則，鋼材はバイリニアの移動硬化</li>
+      <li>最大耐力後は変形が固定端側の1区間に集中するため，結果は分割数に依存します</li>
+    </ul>
+  </div>
+</div>
+
+<div id="outArea">
+  <div class="panel">
+    <h2>断面と材料</h2>
+    <div style="display:grid;grid-template-columns:minmax(0,260px) minmax(0,1fr);gap:14px;align-items:start">
+      <div><svg id="sec" class="plot" role="img" aria-label="断面図"></svg>
+        <div class="unit" id="secInfo" style="font-size:12px;margin-top:4px"></div></div>
+      <div><svg id="mat" class="plot" role="img" aria-label="コンクリートの応力-ひずみ関係"></svg></div>
+    </div>
+    <div class="unit" id="matInfo" style="font-size:12px;margin-top:4px"></div>
+    <div id="hyBlk">
+    <div class="ttl" style="margin-top:12px">履歴モデル（イメージ。数値は入力によらない）</div>
+    <div><svg id="hyC" class="plot" role="img" aria-label="コンクリートの履歴モデルのイメージ"></svg></div>
+    <div><svg id="hyS" class="plot" role="img" aria-label="鋼材の履歴モデルのイメージ"></svg></div>
+    </div>
+  </div>
+
+  <div class="panel hidden" id="outB">
+    <h2>部材の解析の結果</h2>
+    <div class="obar" id="barB"></div>
+    <div class="row caseRow"><button type="button" class="dl" id="keepB">この結果を保持して比較</button><span id="csB" class="cases"></span></div>
+    <div class="fg" data-k="pd"><div class="ttl" id="pdTitle">せん断力-変位関係</div>
+      <svg id="pPd" class="plot" role="img" aria-label="せん断力-変位関係"></svg></div>
+    <div class="fg" data-k="nq"><div id="vnOut" class="hidden"><div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+      <div><div class="ttl" id="pNdT">軸力-変位関係</div><svg id="pNd" class="plot" role="img" aria-label="軸力の推移"></svg></div>
+      <div><div class="ttl">軸力-せん断力関係</div><svg id="pNQ" class="plot" role="img" aria-label="軸力-せん断力関係"></svg></div>
+    </div></div></div>
+    <div class="fg" data-k="tbl"><table class="sum" id="tblB" style="margin-top:8px"></table></div>
+    <div class="fg" data-k="step"><div class="ttl">時点の選択（下端の断面。ひずみ・コンクリートの応力・鋼材の応力）</div>
+      <div class="row"><input type="range" id="stB" min="0" max="0" value="0" step="1" style="flex:1;min-width:200px" aria-label="時点"></div>
+      <div class="unit" id="stBinfo" style="font-size:12.5px;margin:-2px 0 6px"></div>
+      <div class="grid3"><div><svg id="dBe" class="plot" role="img" aria-label="ひずみ分布"></svg></div>
+        <div><svg id="dBc" class="plot" role="img" aria-label="コンクリートの応力分布"></svg></div>
+        <div><svg id="dBs" class="plot" role="img" aria-label="鋼材の応力分布"></svg></div></div></div>
+    <div class="fg" data-k="dist"><div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+      <div><div class="ttl">曲率の分布</div><svg id="pPhi" class="plot" role="img" aria-label="曲率の分布"></svg></div>
+      <div><div class="ttl">曲げモーメントの分布</div><svg id="pMd" class="plot" role="img" aria-label="曲げモーメントの分布"></svg></div>
+    </div></div>
+    <div class="fg" data-k="hist"><div class="ttl">固定端（下端）断面の応力-ひずみ履歴（上下の最外縁の繊維。コンクリートは引張ひずみ −5×10⁻³ まで表示）</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+      <div><svg id="hC" class="plot" role="img" aria-label="コンクリートの応力-ひずみ履歴"></svg></div>
+      <div><svg id="hS" class="plot" role="img" aria-label="鋼材の応力-ひずみ履歴"></svg></div>
+    </div></div>
+    <div class="fg" data-k="xy"><div class="ttl">任意のグラフ</div>
+      <div class="row"><label class="lb" style="width:auto" for="xyXB">横軸</label><select id="xyXB"></select>
+        <label style="margin-left:12px;color:var(--ink-2);font-size:14px" for="xyYB">縦軸</label><select id="xyYB"></select></div>
+      <svg id="pXYB" class="plot" role="img" aria-label="任意のグラフ"></svg></div>
+    <div class="row" style="margin-top:10px"><button class="dl" id="dlB" type="button">CSV をダウンロード</button></div>
+  </div>
+
+  <div class="panel hidden" id="outM">
+    <h2>M-φ 関係</h2>
+    <div class="obar" id="barM"></div>
+    <div class="row caseRow"><button type="button" class="dl" id="keepM">この結果を保持して比較</button><span id="csM" class="cases"></span></div>
+    <div class="fg" data-k="pM"><svg id="pM" class="plot" role="img" aria-label="M-φ 関係"></svg></div>
+    <div class="fg" data-k="cmp"><div class="ttl">曲げモーメントの内訳</div>
+      <svg id="pMc" class="plot" role="img" aria-label="曲げモーメントの内訳"></svg>
+      <div class="ttl">軸力の内訳</div>
+      <svg id="pNc" class="plot" role="img" aria-label="軸力の内訳"></svg></div>
+    <div class="fg" data-k="tbl"><div class="ttl">最大耐力時の内訳</div>
+      <table class="sum" id="tbl"></table></div>
+    <div class="fg" data-k="step"><div class="ttl">時点の選択（ひずみ・コンクリートの応力・鋼材の応力）</div>
+      <div class="row"><input type="range" id="stM" min="0" max="0" value="0" step="1" style="flex:1;min-width:200px" aria-label="時点"></div>
+      <div class="unit" id="stMinfo" style="font-size:12.5px;margin:-2px 0 6px"></div>
+      <div class="grid3"><div><svg id="dMe" class="plot" role="img" aria-label="ひずみ分布"></svg></div>
+        <div><svg id="dMc" class="plot" role="img" aria-label="コンクリートの応力分布"></svg></div>
+        <div><svg id="dMs" class="plot" role="img" aria-label="鋼材の応力分布"></svg></div></div></div>
+    <div class="fg" data-k="xy"><div class="ttl">任意のグラフ</div>
+      <div class="row"><label class="lb" style="width:auto" for="xyXM">横軸</label><select id="xyXM"></select>
+        <label style="margin-left:12px;color:var(--ink-2);font-size:14px" for="xyYM">縦軸</label><select id="xyYM"></select></div>
+      <svg id="pXYM" class="plot" role="img" aria-label="任意のグラフ"></svg></div>
+    <div class="row" style="margin-top:10px"><button class="dl" id="dlM" type="button">CSV をダウンロード</button></div>
+  </div>
+
+  <div class="panel hidden" id="outN">
+    <h2>M-N 相互作用図</h2>
+    <div class="obar" id="barN"></div>
+    <div class="row caseRow"><button type="button" class="dl" id="keepN">この結果を保持して比較</button><span id="csN" class="cases"></span></div>
+    <div class="fg" data-k="pMN"><svg id="pMN" class="plot" role="img" aria-label="M-N 相互作用図"></svg></div>
+    <div class="fg" data-k="pMNc"><div class="ttl">材料ごとの N-M（各軸力で曲げが最大となる時点の負担分）</div>
+      <svg id="pMNc" class="plot" role="img" aria-label="材料ごとの N-M"></svg></div>
+    <div class="fg" data-k="xy"><div class="ttl">任意のグラフ</div>
+      <div class="row"><label class="lb" style="width:auto" for="xyXN">横軸</label><select id="xyXN"></select>
+        <label style="margin-left:12px;color:var(--ink-2);font-size:14px" for="xyYN">縦軸</label><select id="xyYN"></select></div>
+      <svg id="pXYN" class="plot" role="img" aria-label="任意のグラフ"></svg></div>
+    <div class="row" style="margin-top:10px"><button class="dl" id="dlN" type="button">CSV をダウンロード</button></div>
+  </div>
+
+</div>
+</div>
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+const status = (t, err) => { $('status').textContent = t; $('status').className = 'status' + (err ? ' err' : ''); };
+
+
+/* ---------- 主筋の段 ---------- */
+function addBarRow(y, n, d){
+  const tr = document.createElement('tr');
+  tr.innerHTML = '<td><input type="number" value="' + y + '"></td><td><input type="number" value="' + n
+    + '" step="1" min="0"></td><td><input type="number" value="' + d + '"></td>'
+    + '<td><button class="sm" type="button">削除</button></td>';
+  tr.querySelector('button').onclick = () => { tr.remove(); drawSection(); };
+  tr.querySelectorAll('input').forEach(i => i.oninput = drawSection);
+  $('barRows').appendChild(tr);
+}
+$('addBar').onclick = () => { addBarRow(150, 2, 19); drawSection(); };
+[[50, 3, 19], [250, 3, 19]].forEach(r => addBarRow(...r));
+
+/* ---------- 入力の読み取り ---------- */
+function readInput(){
+  const v = id => +$(id).value;
+  const bars = [];
+  $('barRows').querySelectorAll('tr').forEach(tr => {
+    const x = tr.querySelectorAll('input');
+    const y = +x[0].value, n = Math.round(+x[1].value), d = +x[2].value;
+    if (n > 0 && d > 0) bars.push({y, n, d, A: n * Math.PI * d * d / 4});
+  });
+  const S = {b: v('b'), D: v('D'), bars,
+    tube: $('tube').value === 'sq' ? {t: v('tt'), fy: v('fyt')} : null,
+    steel: $('sh').value === 'none' ? null : {sh: $('sh').value, ax: $('ax').value,
+      H: v('Hs'), B: v('Bs'), tw: v('tw'), tf: v('tf')},
+    fyr: v('fyr'), fyf: v('fyf'), fyw: v('fyw')};
+  // 鋼材ごとの材料特性
+  const sm = (k, fid) => ({fy: v(fid), E: v('Es_' + k), b: v('ph_' + k), hy: $('hy_' + k).value || 'kin', al: v('al_' + k)});
+  S.mat = {t: sm('t', 'fyt'), r: sm('r', 'fyr'), f: sm('f', 'fyf'), w: sm('w', 'fyw')};
+  if (S.tube) S.tube.fy = S.mat.t.fy;
+  S.Es = S.mat.r.E; S.ph = S.mat.r.b;                           // 代表値（刻みの目安などに使用）
+  // コンクリートのヤング係数（全領域で共通）
+  // 十字形：弱軸側の H 形鋼（「強軸側と同じ」なら同じ寸法）
+  if (S.steel){
+    const same = S.steel.sh !== 'X' || $('xsame').checked;
+    Object.assign(S.steel, same ? {H2: S.steel.H, B2: S.steel.B, tw2: S.steel.tw, tf2: S.steel.tf}
+      : {H2: v('Hs2'), B2: v('Bs2'), tw2: v('tw2'), tf2: v('tf2')});
+  }
+  S.ecm = $('ecm').value; S.sB = v('fc'); S.gam = v('gam');
+  S.Ec = S.ecm === 'aij' ? 3.35e4 * Math.pow(S.gam / 24, 2) * Math.pow(Math.max(S.sB, 0) / 60, 1 / 3) : v('Ec');
+  // 領域ごとの応力-ひずみ関係
+  const reg = k => { const ts = $('ts_' + k).value, tp = v('tp_' + k), cy = $('cyr_' + k).value;
+    return {sp: v('sp_' + k), ep: v('ep_' + k), la: v('la_' + k), mu: v('mu_' + k),
+      cyr: ['yassin', 'kj', 'origin'].indexOf(cy) >= 0 ? cy : 'yassin', ku: v('ku_' + k),
+      ft: Math.max(v('ft_' + k), 0), ts, etu: ts === 'lin' ? tp : 0.001, tsc: ts === 'om' ? tp : 1}; };
+  S.R = {cv: reg('cv'), tb: reg('tb'), hp: reg('hp'), st: reg('st')};
+  S.R.cv.act = true;
+  Object.assign(S, {ft: S.R.cv.ft, ts: S.R.cv.ts, etu: S.R.cv.etu, tsc: S.R.cv.tsc, cyr: S.R.cv.cyr, ku: S.R.cv.ku});   // 代表値（カバー）
+  S.R.tb.act = !!S.tube && $('use_tb').checked;
+  S.R.hp.act = bars.length > 0 && $('use_hp').checked;
+  S.R.st.act = !!S.steel && $('use_st').checked;
+  S.fco = S.R.cv.sp;                                        // 非拘束の強度（Mander の繰返し則で使用）
+  // 帯筋で囲まれた領域：主筋の外面（上端の段で決め，上下左右に対称とする）
+  const dbMax = bars.length ? Math.max(...bars.map(r => r.d)) : 0;
+  const yMin = bars.length ? Math.min(...bars.map(r => r.y)) : 0, yMax = bars.length ? Math.max(...bars.map(r => r.y)) : 0;
+  S.cc = bars.length ? Math.max(Math.min(yMin, S.D - yMax) - dbMax / 2, 0) : 0;
+  S.bc = S.b - 2 * S.cc; S.dc = S.D - 2 * S.cc;
+  if (!(S.bc > 0 && S.dc > 0)) S.R.hp.act = false;
+  return S;
+}
+/* 使う領域の Ec と σp/εp の関係を確認（問題があれば文を返す） */
+function concreteCheck(S){
+  const nm = {cv: 'カバー', tb: '鋼管で囲まれた領域', hp: '帯筋で囲まれた領域', st: '内蔵鉄骨で囲まれた領域'};
+  if (!(S.Ec > 0)) return 'コンクリートのヤング係数 Ec を正しく入力してください。';
+  for (const k of ['cv', 'tb', 'hp', 'st']){
+    const R = S.R[k]; if (!R.act) continue;
+    if (!(R.sp > 0) || !(R.ep > 0)) return nm[k] + 'の σp と εp は正の値を入力してください。';
+    if (!(R.mu >= 1) || !(R.la >= 0)) return nm[k] + 'の μ は 1 以上，λ は 0 以上を入力してください。';
+    if (R.cyr === 'yassin' && !(R.ku > 0 && R.ku < 1)) return nm[k] + 'の ku は 0 より大きく 1 より小さい値を入力してください。';
+    if (R.ts === 'lin' && R.ft > 0 && !(R.etu > R.ft / S.Ec)) return nm[k] + 'の εtu はひび割れひずみ ft/Ec（' + (R.ft / S.Ec).toExponential(2) + '）より大きくしてください。';
+    if (R.ts === 'om' && !(R.tsc > 0)) return nm[k] + 'の軟化係数 c は正の値を入力してください。';
+    if (!(S.Ec > R.sp / R.ep)) return nm[k] + 'で Ec ≤ σp/εp（' + (R.sp / R.ep).toFixed(0) + ' N/mm²）となり，上昇域の式が使えません。εp を大きくするか Ec を見直してください。';
+  }
+  return '';
+}
+
+/* ---------- 鉄骨の幅関数（せい方向の座標 u，断面中心が原点） ---------- */
+function steelWidth(st, u){
+  // フランジ（f）とウェブ（w）の幅を分けて返す
+  const q = Math.abs(u);
+  const S_ = () => q <= st.H / 2 ? (q >= st.H / 2 - st.tf ? {f: st.B, w: 0} : {f: 0, w: st.tw}) : {f: 0, w: 0};
+  const W_ = (H, B, tw, tf) => q <= B / 2 ? {f: 2 * tf, w: q <= tw / 2 ? H - 2 * tf : 0} : {f: 0, w: 0};
+  if (st.sh === 'H') return st.ax === 'strong' ? S_() : W_(st.H, st.B, st.tw, st.tf);
+  const a = S_(), b = W_(st.H2, st.B2, st.tw2, st.tf2);                // 強軸側 ＋ 弱軸側
+  return {f: a.f + b.f, w: a.w + b.w - (q <= st.tw2 / 2 && a.w > 0 ? st.tw : 0)};   // 十字形：ウェブ交差部の重複を除く
+}
+
+/* ---------- 材料モデル ---------- */
+function concreteModel(S0, R){
+  const S = Object.assign({}, S0, {ft: R.ft, ts: R.ts, etu: R.etu, tsc: R.tsc, cyr: R.cyr, ku: R.ku});   // 領域ごとの引張・履歴
+  // 圧縮：Popovics 式で (εp, σp) まで上昇 → 直線で (μ·εp, λ·σp) まで低下 → 以後一定
+  const Ec = S.Ec, sp = R.sp, ep = R.ep, e2 = Math.max(R.mu, 1) * ep, s2 = Math.max(R.la, 0) * sp;
+  const n = Ec / (Ec - sp / ep);
+  const comp = e => {
+    if (e <= 0) return 0;
+    if (e <= ep){ const x = e / ep; return sp * x * n / (n - 1 + Math.pow(x, n)); }
+    if (e >= e2) return s2;
+    return sp + (s2 - sp) * (e - ep) / (e2 - ep);
+  };
+  const m = {sig: comp, sigC: comp, fcc: sp, ecc: ep, Ec, n, e2, s2};
+  const ft = S.ft, ecr = ft > 0 ? ft / Ec : 0, etu = Math.max(S.etu, ecr * 1.0001);
+  m.sig = e => {
+    if (e >= 0) return comp(e);
+    if (ft <= 0) return 0;
+    const a = -e;
+    if (a <= ecr) return -Ec * a;                         // ひび割れまで直線
+    return -tensionEnv(S, ft, ecr, etu, a);
+  };
+  m.ecr = ecr; m.etu = etu; m.S = S;
+  return m;
+}
+/* 旧モデル（崎野・孫，Mander，修正 Kent-Park）：現在は選択できないが，コードは残す */
+function concreteModelOld(S, confined){
+  const m = concreteComp(S, confined);
+  m.sigC = m.sig;
+  const ft = S.ft, ecr = ft > 0 ? ft / m.Ec : 0, etu = Math.max(S.etu, ecr * 1.0001);
+  const comp = m.sig;
+  m.sig = e => {
+    if (e >= 0) return comp(e);
+    if (ft <= 0) return 0;
+    const a = -e;
+    if (a <= ecr) return -m.Ec * a;
+    return -tensionEnv(S, ft, ecr, etu, a);
+  };
+  m.ecr = ecr; m.etu = etu;
+  return m;
+}
+/* ひび割れ後の引張の包絡線（a：引張ひずみの大きさ） */
+function tensionEnv(S, ft, ecr, etu, a){
+  if (S.ts === 'om') return ft * Math.pow(ecr / a, S.tsc);             // 出雲・島・岡村
+  return a >= etu ? 0 : ft * (etu - a) / (etu - ecr);                  // 直線軟化
+}
+/* 崎野・孫：CFT 充填コンクリート（原式は重力単位系 kgf/cm²） */
+function concreteCFT(S){
+  const G2 = 10.197;                                   // N/mm² → kgf/cm²
+  const fc = S.fc, sB = fc * G2;
+  const B = (S.b + S.D) / 2, t = S.tube.t, C = B - 2 * t;
+  const rho = Math.pow(B / (B - 2 * t), 2) - 1;       // 鋼管の体積比
+  const K = 1 + 11.5 * rho * (S.tube.fy / fc) * (t / C) * (1 - t / (2 * C));
+  const eo = 0.5243 * Math.pow(sB, 0.25) * 1e-3;
+  const eco = K <= 1.5 ? eo * (1 + 4.7 * (K - 1)) : eo * (3.35 + 20 * (K - 1.5));
+  const Ec = (0.7 + 0.106 * Math.sqrt(sB)) * 1e5 / G2;  // N/mm²
+  const fcc = K * fc, A = Ec / (fcc / eco);            // A = Ec / Esec
+  const Dp = 1.5 - 0.00168 * sB + 0.78 * Math.sqrt((K - 1) * sB / 23);
+  const sig = e => { if (e <= 0) return 0; const x = e / eco;
+    return Math.max(fcc * (A * x + (Dp - 1) * x * x) / (1 + (A - 2) * x + Dp * x * x), 0); };
+  return {sig, fcc, ecc: eco, K, Ec, rho, Dp};
+}
+function concreteComp(S, confined){
+  if (S.cft) return concreteCFT(S);
+  const fc = S.fc;
+  let rho = 0, rhoEff = 0;
+  if (confined){
+    const ah = Math.PI * S.dh * S.dh / 4;
+    rho = S.legs * ah * (S.bc + S.dc) / (S.bc * S.dc * S.s);           // 体積比
+    const C = S.bc / (S.legs - 1);                                        // 拘束された主筋の間隔
+    rhoEff = rho * Math.min(S.bc / C, 1e9) * Math.max(1 - S.s / (2 * S.bc), 0);
+  }
+  if (S.cm === 'sakino'){
+    // 崎野・孫（横補強筋による拘束）。原式は重力単位系 kgf/cm²
+    const G2 = 10.197, sB = fc * G2;
+    let K = 1;
+    if (confined){
+      const shs = Math.min(S.fyh, 7000 / G2);                 // 横補強筋の応力（上限 7000 kgf/cm²）
+      const Dc = (S.bc + S.dc) / 2;                           // 周辺横補強筋の中心間距離
+      const C = Dc / (S.legs - 1);                            // 横支持長さ
+      K = 1 + 11.5 * rho * shs * (S.dh / C) * Math.max(1 - S.s / (2 * Dc), 0) / fc;
+    }
+    const eo = 0.5243 * Math.pow(sB, 0.25) * 1e-3;
+    const ecc = K <= 1.5 ? eo * (1 + 4.7 * (K - 1)) : eo * (3.35 + 20 * (K - 1.5));
+    const Ec = (0.703 + 0.106 * Math.sqrt(sB)) * 1e5 / G2;    // N/mm²
+    const fcc = K * fc, A = Ec * ecc / fcc;
+    const Dp = 1.50 - 0.00168 * sB + 0.50 * Math.sqrt((K - 1) * sB / 23);
+    const sig = e => { if (e <= 0) return 0; const x = e / ecc;
+      return Math.max(fcc * (A * x + (Dp - 1) * x * x) / (1 + (A - 2) * x + Dp * x * x), 0); };
+    return {sig, fcc, ecc, K, Ec, rho, Dp};
+  }
+  if (S.cm === 'mander'){
+    const Ec = 5000 * Math.sqrt(fc), eco = 0.002;
+    let fcc = fc, ecc = eco, K = 1;
+    if (confined){
+      const fl = 0.5 * S.ke * rho * S.fyh;
+      fcc = fc * (-1.254 + 2.254 * Math.sqrt(1 + 7.94 * fl / fc) - 2 * fl / fc);
+      ecc = eco * (1 + 5 * (fcc / fc - 1)); K = fcc / fc;
+    }
+    const r = Ec / (Ec - fcc / ecc);
+    const esp = 0.005;
+    const sig = e => { if (e <= 0) return 0;
+      if (!confined && !S.noSpall && e > 2 * eco){   // かぶり：剥落まで直線で低下
+        const f2 = fcc * 2 * r / (r - 1 + Math.pow(2, r));
+        return e >= esp ? 0 : f2 * (esp - e) / (esp - 2 * eco); }
+      const x = e / ecc; return fcc * x * r / (r - 1 + Math.pow(x, r)); };
+    return {sig, fcc, ecc, K, Ec, rho};
+  }
+  // 修正 Kent-Park
+  const K = confined ? 1 + rho * S.fyh / fc : 1;
+  const eo = 0.002 * K;
+  const zmDen = (3 + 0.29 * fc) / (145 * fc - 1000)
+    + (confined ? 0.75 * rho * Math.sqrt(S.bc / S.s) : 0) - 0.002 * K;
+  const Zm = 0.5 / Math.max(zmDen, 1e-6);
+  const fcc = K * fc;
+  const sig = e => { if (e <= 0) return 0;
+    if (e <= eo){ const x = e / eo; return fcc * (2 * x - x * x); }
+    const f2 = fcc * (1 - Zm * (e - eo));
+    return confined ? Math.max(f2, 0.2 * fcc) : Math.max(f2, 0); };
+  return {sig, fcc, ecc: eo, K, Ec: 2 * fc / 0.002, rho};
+}
+/* 履歴を持つ材料：trial(e) で試行応力と接線剛性，commit(e, s) で状態を確定 */
+function SteelMat(fy, E, ph){ this.fy = fy; this.E = E; this.Eh = ph * E; this.ec = 0; this.sc = 0; }
+SteelMat.prototype.trial = function(e){
+  const ey = this.fy / this.E;
+  let s = this.sc + this.E * (e - this.ec), Et = this.E;
+  const up = this.fy + this.Eh * (e - ey), lo = -this.fy + this.Eh * (e + ey);
+  if (s > up){ s = up; Et = this.Eh; } else if (s < lo){ s = lo; Et = this.Eh; }
+  return {s, Et};
+};
+SteelMat.prototype.commit = function(e, s){ this.ec = e; this.sc = s; };
+
+/* ---------- 鋼材の履歴モデル（p = {fy, E, b, hy, al}） ---------- */
+// 等方硬化（バイリニア）：降伏応力が累積塑性ひずみ κ に比例して拡大
+function SteelIso(fy, E, ph){ this.fy = fy; this.E = E; this.Eh = ph * E; this.H = this.Eh >= E ? 1e30 : E * this.Eh / (E - this.Eh);
+  this.ec = 0; this.sc = 0; this.kap = 0; }
+SteelIso.prototype.calc = function(e){
+  const sy = this.fy + this.H * this.kap, st = this.sc + this.E * (e - this.ec);
+  if (Math.abs(st) <= sy) return {s: st, Et: this.E, kap: this.kap};
+  const dg = (Math.abs(st) - sy) / (this.E + this.H);
+  return {s: Math.sign(st) * (sy + this.H * dg), Et: this.Eh, kap: this.kap + dg};
+};
+SteelIso.prototype.trial = function(e){ const r = this.calc(e); return {s: r.s, Et: r.Et}; };
+SteelIso.prototype.commit = function(e){ const r = this.calc(e); this.ec = e; this.sc = r.s; this.kap = r.kap; };
+// 修正 Menegotto-Pinto（Filippou ら，等方硬化なし）：R = R0 − a1·ξ/(a2 + ξ)，R0 = 20，a1 = 18.5，a2 = 0.15
+function SteelMP(fy, E, ph){ this.fy = fy; this.E = E; this.b = ph; this.ey = fy / E;
+  this.R0 = 20; this.a1 = 18.5; this.a2 = 0.15;
+  this.ec = 0; this.sc = 0; this.kon = 0; this.emax = this.ey; this.emin = -this.ey;
+  this.er = 0; this.sr = 0; this.e0 = 0; this.s0 = 0; this.epl = 0; }
+SteelMP.prototype.calc = function(e){
+  const st = {kon: this.kon, emax: this.emax, emin: this.emin, er: this.er, sr: this.sr, e0: this.e0, s0: this.s0, epl: this.epl};
+  const de = e - this.ec, E = this.E, Eh = this.b * E, fy = this.fy, ey = this.ey;
+  if (st.kon === 0){
+    if (de === 0) return {s: 0, Et: E, st};
+    if (de > 0){ st.kon = 1; st.e0 = st.emax; st.s0 = fy; st.epl = st.emax; }
+    else { st.kon = 2; st.e0 = st.emin; st.s0 = -fy; st.epl = st.emin; }
+  } else if (st.kon === 2 && de > 0){                      // 圧縮 → 引張の反転
+    st.kon = 1; st.er = this.ec; st.sr = this.sc; if (this.ec < st.emin) st.emin = this.ec;
+    st.e0 = (fy - Eh * ey - st.sr + E * st.er) / (E - Eh); st.s0 = fy + Eh * (st.e0 - ey); st.epl = st.emax;
+  } else if (st.kon === 1 && de < 0){                      // 引張 → 圧縮の反転
+    st.kon = 2; st.er = this.ec; st.sr = this.sc; if (this.ec > st.emax) st.emax = this.ec;
+    st.e0 = (-fy + Eh * ey - st.sr + E * st.er) / (E - Eh); st.s0 = -fy + Eh * (st.e0 + ey); st.epl = st.emin;
+  }
+  const xi = Math.abs((st.epl - st.e0) / ey), R = Math.max(this.R0 - this.a1 * xi / (this.a2 + xi), 1);
+  const den = st.e0 - st.er;
+  if (Math.abs(den) < 1e-15) return {s: this.sc, Et: E, st};
+  const x = (e - st.er) / den, d1 = 1 + Math.pow(Math.abs(x), R), d2 = Math.pow(d1, 1 / R);
+  const ss = this.b * x + (1 - this.b) * x / d2;
+  const s = ss * (st.s0 - st.sr) + st.sr;
+  const Et = (st.s0 - st.sr) / den * (this.b + (1 - this.b) / (d1 * d2));
+  return {s, Et, st};
+};
+SteelMP.prototype.trial = function(e){ const r = this.calc(e); return {s: r.s, Et: r.Et}; };
+SteelMP.prototype.commit = function(e){ const r = this.calc(e); Object.assign(this, r.st); this.ec = e; this.sc = r.s; };
+// 引張専用（スリップ型）：骨格は原点からのバイリニア（剛性 α·Es，降伏後 β·α·Es），圧縮は負担しない
+function SteelTen(fy, E, ph, al){ this.fy = fy; this.E = Math.max(al, 1e-6) * E; this.Eh = ph * this.E; this.ey = fy / this.E; this.emx = 0; }
+SteelTen.prototype.skel = function(e){ return e <= this.ey ? this.E * e : this.fy + this.Eh * (e - this.ey); };
+SteelTen.prototype.trial = function(e){
+  const emx = Math.max(this.emx, 0), epl = Math.max(emx - this.skel(emx) / this.E, 0);
+  if (e <= epl) return {s: 0, Et: 0};
+  if (e >= emx) return e <= this.ey ? {s: this.E * e, Et: this.E} : {s: this.skel(e), Et: this.Eh};
+  return {s: this.E * (e - epl), Et: this.E};
+};
+SteelTen.prototype.commit = function(e){ if (e > this.emx) this.emx = e; };
+function makeSteel(p){
+  const E = Math.max(p.al > 0 ? p.al : 1, 1e-6) * p.E;          // 見かけのヤング係数 α·Es（全モデル共通）
+  if (p.hy === 'iso') return new SteelIso(p.fy, E, p.b);
+  if (p.hy === 'mp') return new SteelMP(p.fy, E, p.b);
+  if (p.hy === 'ten') return new SteelTen(p.fy, E, p.b, 1);
+  return new SteelMat(p.fy, E, p.b);
+}
+// 単調載荷の曲線（原点から一方向に載荷）
+function steelMono(p){ const m = makeSteel(p); return e => m.trial(e).s; }
+
+function ConcMat(m, S){                    // m：圧縮の包絡線モデル
+  this.m = m; this.S = S; this.Ec = m.Ec; this.rule = S.cyr || 'origin';
+  this.ft = S.ft; this.ecr = S.ft > 0 ? S.ft / m.Ec : 0; this.etu = Math.max(S.etu, this.ecr * 1.0001);
+  this.ecm = 0; this.scm = 0;              // 圧縮側の既往最大（除荷点 εun, σun）
+  this.etm = 0; this.stm = 0;              // 引張側の既往最大（大きさ）
+  this.cracked = false;
+  this.ec = 0; this.sc = 0; this.dir = 1;  // 確定状態と載荷方向
+  this.er = 0; this.sr = 0;                // 直近の反転点
+  this.onEnv = true;                       // 包絡線上を載荷中か
+}
+ConcMat.prototype.envC = function(e){ return this.m.sigC(e); };
+ConcMat.prototype.envT = function(a){ return tensionEnv(this.S, this.ft, this.ecr, this.etu, a); };
+// 除荷点 (εun, σun) に対する残留ひずみ・除荷曲線・再載荷の目標
+ConcMat.prototype.cyc = function(eunO, funO){
+  const eun = eunO !== undefined ? eunO : this.ecm, fun = funO !== undefined ? funO : this.scm;
+  const Ec = this.Ec, ecc = this.m.ecc;
+  if (!(eun > 0) || !(fun > 0)) return null;
+  if (this.rule === 'kj'){
+    const x = eun / ecc;
+    let ep = ecc * (0.145 * x * x + 0.13 * x);
+    ep = Math.max(0, Math.min(ep, eun - fun / Ec));
+    const k = fun / (eun - ep);
+    return {ep, U: e => e <= ep ? 0 : k * (e - ep), fnew: () => fun, ere: () => eun};
+  }
+  // Mander ら（1988）
+  const a = Math.max(ecc / (ecc + eun), 0.09 * eun / ecc);
+  const ea = a * Math.sqrt(eun * ecc);
+  let ep = eun - (eun + ea) * fun / (fun + Ec * ea);
+  ep = Math.max(0, Math.min(ep, eun * 0.999));
+  const Esec = fun / (eun - ep);
+  const b = Math.max(fun / this.S.fco, 1), c = Math.min(Math.sqrt(ecc / eun), 1);
+  const Eu = b * c * Ec;
+  const U = Eu > Esec * 1.001
+    ? (e => { if (e <= ep) return 0; const xx = (e - eun) / (ep - eun), r = Eu / (Eu - Esec);
+              return Math.max(fun - fun * xx * r / (r - 1 + Math.pow(xx, r)), 0); })
+    : (e => e <= ep ? 0 : Esec * (e - ep));
+  const fco = this.S.fco, fcc = this.m.fcc;
+  return {ep, U,
+    fnew: fro => 0.92 * fun + 0.08 * fro,
+    ere: (fro, ero) => {                                  // 包絡線に戻る点（遷移曲線は直線で近似）
+      const fnew = 0.92 * fun + 0.08 * fro, Er = (fnew - fro) / Math.max(eun - ero, 1e-12);
+      return Er > 0 ? eun + (fun - fnew) / (Er * (2 + fcc / fco)) : eun;
+    }};
+};
+// Yassin：除荷線は焦点 (εr, Ec·εr) を通る。焦点は折れ点 (μ·εp, λ·σp) からの除荷剛性が ku·Ec となる位置
+ConcMat.prototype.yas = function(){
+  const Ec = this.Ec, ku = Math.min(Math.max(this.S.ku, 1e-3), 0.999), m = this.m;
+  const eu = m.e2 || m.ecc * 5, su = m.s2 !== undefined ? m.s2 : 0;
+  const erF = (su - ku * Ec * eu) / (Ec * (1 - ku)), srF = Ec * erF;
+  const em = this.ecm, sm = this.envC(em);
+  let er = em - erF > 1e-12 ? (sm - srF) / (em - erF) : Ec;
+  if (!(er > 0) || er > Ec) er = Ec;
+  return {em, sm, er, ept: Math.max(em - sm / er, 0)};
+};
+ConcMat.prototype.sig = function(e){
+  if (this.rule === 'yassin' && e >= 0){
+    if (e >= this.ecm) return this.envC(e);
+    const Y = this.yas();
+    if (e <= Y.ept) return 0;
+    const U = Y.sm + Y.er * (e - Y.em), Lo = 0.5 * Y.er * (e - Y.ept);          // 再載荷線（上限）と除荷線（下限）
+    const s0 = this.ec > Y.ept ? this.sc + this.Ec * (e - this.ec) : this.Ec * (e - Y.ept);
+    return Math.max(Math.min(s0, U), Lo, 0);
+  }
+  if (e < 0){                                             // 引張側（原点指向）
+    const a = -e;
+    if (this.ft <= 0) return 0;
+    if (!this.cracked && a <= this.ecr) return -this.Ec * a;
+    if (a >= Math.max(this.etm, this.ecr)) return -this.envT(a);
+    const k = this.etm > 0 ? this.stm / this.etm : this.Ec;
+    return -k * a;
+  }
+  if (e >= this.ecm && this.rule === 'origin') return this.envC(e);
+  if (this.rule === 'origin'){
+    const k = this.ecm > 0 ? this.scm / this.ecm : this.Ec;
+    return k * e;
+  }
+  if (e >= this.ecm && this.onEnv && e >= this.ec) return this.envC(e);   // 包絡線上をそのまま載荷
+  const C = this.cyc();
+  if (!C) return this.envC(e);
+  // 載荷方向（確定状態からの向き）と反転点
+  const dir = e > this.ec ? 1 : (e < this.ec ? -1 : this.dir);
+  let er = this.er, sr = this.sr;
+  if (dir !== this.dir){ er = this.ec; sr = this.sc; }
+  if (dir < 0){
+    // 除荷：反転点から初期剛性で下がり，除荷曲線に合流
+    if (e >= this.ecm) return this.envC(e);
+    if (er >= this.ecm - 1e-12) return C.U(e);                          // 包絡線からの除荷は除荷曲線
+    // 内側からの除荷：初期剛性で下がり，除荷曲線と「反転点→残留ひずみ点」の直線の低い方に合流（跳ね上がらない）
+    if (e <= C.ep) return 0;
+    const chord = er > C.ep ? Math.max(sr, 0) * (e - C.ep) / (er - C.ep) : 0;
+    return Math.min(Math.max(sr + this.Ec * (e - er), Math.min(C.U(e), chord)), Math.max(sr, 0));
+  }
+  // 再載荷：反転点から (εun, σnew) へ直線，その後は包絡線へ
+  const eun = this.ecm;
+  const e0 = Math.max(er, C.ep), s0 = er >= C.ep ? Math.max(sr, 0) : 0;
+  const fnew = C.fnew(s0), ere = Math.max(C.ere(s0, e0), eun);
+  if (e <= C.ep) return 0;
+  if (e <= eun){
+    const f = eun > e0 ? s0 + (fnew - s0) * (e - e0) / (eun - e0) : fnew;
+    return Math.max(f, 0);
+  }
+  if (e < ere){
+    const fre = this.envC(ere);
+    return fnew + (fre - fnew) * (e - eun) / (ere - eun);
+  }
+  return this.envC(e);
+};
+ConcMat.prototype.trial = function(e){
+  const s = this.sig(e), h = 1e-8;
+  const dir = e > this.ec ? 1 : (e < this.ec ? -1 : this.dir);
+  const s2 = this.sig(e + dir * h);
+  return {s, Et: (s2 - s) / (dir * h)};
+};
+ConcMat.prototype.commit = function(e, s){
+  const dir = e > this.ec ? 1 : (e < this.ec ? -1 : this.dir);
+  if (dir !== this.dir){ this.er = this.ec; this.sr = this.sc; this.dir = dir; }
+  if (e > this.ecm){
+    // 包絡線上（または戻りの途中）で既往最大を更新
+    if (this.rule === 'origin' || s >= this.envC(e) - 1e-9 * Math.max(1, this.scm)){ this.ecm = e; this.scm = s; }
+    else if (this.rule !== 'origin'){ const C = this.cyc(); if (!C || e >= C.ere(this.sr, this.er)){ this.ecm = e; this.scm = s; } }
+  }
+  if (-e > this.etm){ this.etm = -e; this.stm = -s; }
+  if (-e > this.ecr) this.cracked = true;
+  this.onEnv = e > 0 && e >= this.ecm - 1e-15 && Math.abs(s - this.envC(e)) <= 1e-6 * Math.max(1, Math.abs(s));
+  this.ec = e; this.sc = s;
+};
+
+function steelModel(fy, Es, ph){
+  const ey = fy / Es;
+  return e => { const a = Math.abs(e);
+    return a <= ey ? Es * e : Math.sign(e) * (fy + ph * Es * (a - ey)); };
+}
+
+/* ---------- ファイバー分割 ---------- */
+/* コンクリートの領域（断面中心に対して左右対称な矩形。優先順：鋼管 ＞ 帯筋 ＞ 内蔵鉄骨） */
+function steelBox(S){
+  // 内蔵鉄骨で囲まれた領域：H 形鋼は外接矩形，十字形鋼はフランジ端を結ぶ八角形。hwAt(y)：高さ y（上端から）での半幅
+  const st = S.steel; if (!st) return null;
+  const yc = S.D / 2;
+  if (st.sh === 'H'){
+    const w = st.ax === 'strong' ? st.B : st.H, h = st.ax === 'strong' ? st.H : st.B;
+    return {y1: yc - h / 2, y2: yc + h / 2, hwAt: () => w / 2,
+      pts: [[-w / 2, -h / 2], [w / 2, -h / 2], [w / 2, h / 2], [-w / 2, h / 2]]};
+  }
+  // 頂点：強軸側フランジ端 (±B/2, ±H/2)，弱軸側フランジ端 (±H2/2, ±B2/2)
+  const a1 = st.B / 2, h1 = st.H / 2, a2 = st.H2 / 2, h2 = Math.min(st.B2 / 2, h1);
+  const hwAt = y => { const q = Math.abs(y - yc);
+    if (q > h1) return 0;
+    if (q <= h2) return a2;
+    return a2 + (a1 - a2) * (q - h2) / Math.max(h1 - h2, 1e-9); };
+  return {y1: yc - h1, y2: yc + h1, hwAt,
+    pts: [[-a1, -h1], [a1, -h1], [a2, -h2], [a2, h2], [a1, h1], [-a1, h1], [-a2, h2], [-a2, -h2]]};
+}
+/* コンクリートの領域（断面中心に対して左右対称。優先順：鋼管 ＞ 帯筋 ＞ 内蔵鉄骨） */
+function regionBoxes(S){
+  const L = [];
+  const rect = (k, hw, y1, y2) => ({k, y1, y2, hwAt: () => hw,
+    pts: [[-hw, y1 - S.D / 2], [hw, y1 - S.D / 2], [hw, y2 - S.D / 2], [-hw, y2 - S.D / 2]]});
+  if (S.R.tb.act) L.push(rect('tb', S.b / 2 - S.tube.t, S.tube.t, S.D - S.tube.t));
+  if (S.R.hp.act) L.push(rect('hp', S.bc / 2, S.cc, S.D - S.cc));
+  if (S.R.st.act) L.push(Object.assign({k: 'st'}, steelBox(S)));
+  return L;
+}
+function buildFibers(S){
+  const n = S.nFib || Math.max(10, Math.round(S.D / 10)), h = S.D / n;
+  const yc = S.D / 2;
+  const fib = [];
+  const models = {cv: concreteModel(S, S.R.cv)};
+  for (const k of ['tb', 'hp', 'st']) if (S.R[k].act) models[k] = concreteModel(S, S.R[k]);
+  const boxes = regionBoxes(S);
+  const M = S.mat;
+  const sigF = steelMono(M.f), sigW = steelMono(M.w), sigR = steelMono(M.r);
+  const sigT = S.tube ? steelMono(M.t) : null;
+  const t = S.tube ? S.tube.t : 0;
+  // 鉄骨の外接矩形の半幅（鉄骨の面積を差し引く領域を決めるため）
+  const sBox = steelBox(S);
+  for (let k = 0; k < n; k++){
+    const y1 = k * h, y2 = y1 + h, ym = (y1 + y2) / 2, m = 40, dA = h / m;
+    const A = {cv: 0, tb: 0, hp: 0, st: 0};
+    let At = 0, Aty = 0, Af = 0, Afy = 0, Aw = 0, Awy = 0;
+    for (let j = 0; j < m; j++){
+      const yy = y1 + (j + 0.5) * dA;
+      // 鋼管：上下の板は幅 b，側板は幅 2t
+      let avail = S.b;
+      if (S.tube){
+        const inside = yy > t && yy < S.D - t;
+        const wt = inside ? 2 * t : S.b;
+        At += wt * dA; Aty += wt * dA * yy;
+        avail = inside ? S.b - 2 * t : 0;
+      }
+      // コンクリートを優先順に割り当てる（左右対称なので幅で扱える）
+      let cov = 0;
+      for (const bx of boxes){
+        if (yy <= bx.y1 || yy >= bx.y2) continue;
+        const w = Math.min(2 * bx.hwAt(yy), avail);
+        if (w > cov){ A[bx.k] += (w - cov) * dA; cov = w; }
+      }
+      A.cv += Math.max(avail - cov, 0) * dA;
+      // 内蔵鉄骨：その高さで鉄骨を含む最優先の領域から面積を除く
+      if (S.steel){
+        const w = steelWidth(S.steel, yy - yc), ws = (w.f + w.w) * dA;
+        if (ws > 0){
+          Af += w.f * dA; Afy += w.f * dA * yy; Aw += w.w * dA; Awy += w.w * dA * yy;
+          const own = boxes.find(bx => yy > bx.y1 && yy < bx.y2 && (bx.k === 'st' || bx.hwAt(yy) >= sBox.hwAt(yy) - 1e-9));
+          A[own ? own.k : 'cv'] -= ws;
+        }
+      }
+    }
+    // 主筋：鋼管 ＞ 帯筋 ＞ 内蔵鉄骨（外接矩形に収まる場合）＞ カバー の領域から面積を除く
+    for (const r of S.bars){
+      if (!(r.y >= y1 && r.y < y2)) continue;
+      const hwBar = r.n > 1 ? S.b / 2 - S.cc - r.d / 2 : 0;
+      const own = boxes.find(bx => r.y > bx.y1 && r.y < bx.y2 && (bx.k !== 'st' || hwBar + r.d / 2 <= bx.hwAt(r.y)));
+      A[own ? own.k : 'cv'] -= r.A;
+    }
+    // 差し引きで負になった分はカバーから除く
+    for (const kk of ['tb', 'hp', 'st']) if (A[kk] < 0){ A.cv += A[kk]; A[kk] = 0; }
+    if (A.cv < 0) A.cv = 0;
+    if (At > 0) fib.push({y: Aty / At, A: At, sig: sigT, g: 't', fy: S.tube.fy,
+      make: () => makeSteel(M.t)});
+    for (const kk of ['tb', 'hp', 'st']) if (A[kk] > 0){ const mm = models[kk];
+      fib.push({y: ym, A: A[kk], sig: mm.sig, g: 'co', rg: kk, make: () => new ConcMat(mm, mm.S)}); }
+    if (A.cv > 0) fib.push({y: ym, A: A.cv, sig: models.cv.sig, g: 'cv', rg: 'cv', make: () => new ConcMat(models.cv, models.cv.S)});
+    if (Af > 0) fib.push({y: Afy / Af, A: Af, sig: sigF, g: 's', fy: S.fyf,
+      make: () => makeSteel(M.f)});   // フランジ
+    if (Aw > 0) fib.push({y: Awy / Aw, A: Aw, sig: sigW, g: 's', fy: S.fyw,
+      make: () => makeSteel(M.w)});   // ウェブ
+  }
+  for (const r of S.bars) fib.push({y: r.y, A: r.A, sig: sigR, g: 'r', fy: S.fyr,
+    make: () => makeSteel(M.r)});
+  const coreK = ['tb', 'hp', 'st'].find(kk => models[kk]);
+  return {fib, yc, models, boxes, coverC: models.cv, coreC: coreK ? models[coreK] : models.cv, n, h};
+}
+
+/* ---------- 断面力（履歴を持つ材料） ---------- */
+// 試行：確定済みの履歴のもとで，ひずみ分布 (e0, phi) に対する断面力と接線 dN/de0 を返す
+function trialForces(F, mats, e0, phi){
+  const o = {N: 0, M: 0, K: 0, K01: 0, K11: 0, Nc: 0, Nr: 0, Ns: 0, Mc: 0, Mr: 0, Ms: 0, Nv: 0, Mv: 0, Nk: 0, Mk: 0, Nt: 0, Mt: 0};
+  for (let i = 0; i < F.fib.length; i++){
+    const f = F.fib[i], arm = F.yc - f.y, e = e0 + phi * arm;
+    const t = mats[i].trial(e);
+    const P = t.s * f.A, Mo = P * arm;
+    o.N += P; o.M += Mo; o.K += t.Et * f.A; o.K01 += t.Et * f.A * arm; o.K11 += t.Et * f.A * arm * arm;
+    if (f.g === 'cv'){ o.Nv += P; o.Mv += Mo; o.Nc += P; o.Mc += Mo; }
+    else if (f.g === 'co'){ o.Nk += P; o.Mk += Mo; o.Nc += P; o.Mc += Mo; }
+    else if (f.g === 'r'){ o.Nr += P; o.Mr += Mo; }
+    else if (f.g === 't'){ o.Nt += P; o.Mt += Mo; }
+    else { o.Ns += P; o.Ms += Mo; }
+  }
+  return o;
+}
+function commitAll(F, mats, e0, phi){
+  for (let i = 0; i < F.fib.length; i++){
+    const e = e0 + phi * (F.yc - F.fib[i].y);
+    mats[i].commit(e, mats[i].trial(e).s);
+  }
+}
+// 1 ステップの釣合い：Newton-Raphson，収束しなければ二分法
+function solveStep(F, mats, phi, Nt, guess){
+  const tol = 1e-6 * Math.max(Math.abs(Nt), 1e3);
+  let e = guess;
+  for (let it = 0; it < 40; it++){
+    const t = trialForces(F, mats, e, phi), R = t.N - Nt;
+    if (Math.abs(R) < tol) return e;
+    if (!(t.K > 1e-9)) break;
+    const en = e - R / t.K;
+    if (!isFinite(en) || Math.abs(en - e) > 0.01) break;
+    e = en;
+  }
+  // 二分法
+  const g = x => trialForces(F, mats, x, phi).N - Nt;
+  let a = guess, fa = g(a), step = 2e-5, b = a, fb = fa, k = 0;
+  if (Math.abs(fa) < tol) return a;
+  while (k++ < 80){
+    b = a + (fa < 0 ? step : -step); fb = g(b);
+    if (fa * fb <= 0) break;
+    a = b; fa = fb; step *= 1.6;
+  }
+  if (fa * fb > 0) return null;
+  let lo = Math.min(a, b), hi = Math.max(a, b), flo = lo === a ? fa : fb;
+  for (let i = 0; i < 70; i++){
+    const mid = (lo + hi) / 2, fm = g(mid);
+    if (flo * fm <= 0) hi = mid; else { lo = mid; flo = fm; }
+  }
+  return (lo + hi) / 2;
+}
+
+/* ---------- 断面：軸力と曲げを与えて (e0, φ) を求める ---------- */
+function sectionMN(F, mats, Nt, Mt, g){
+  const tolN = 1e-6 * Math.max(Math.abs(Nt), 1e3), tolM = 1e-6 * Math.max(Math.abs(Mt), 1e5);
+  let e0 = g.e0, phi = g.phi;
+  for (let it = 0; it < 60; it++){
+    const t = trialForces(F, mats, e0, phi), rN = t.N - Nt, rM = t.M - Mt;
+    if (Math.abs(rN) < tolN && Math.abs(rM) < tolM) return {e0, phi};
+    const det = t.K * t.K11 - t.K01 * t.K01;
+    if (!(Math.abs(det) > 0)) break;
+    let de = (t.K11 * rN - t.K01 * rM) / det, dp = (-t.K01 * rN + t.K * rM) / det;
+    const sc = Math.max(Math.abs(de) / 0.002, Math.abs(dp) * F.yc / 0.002, 1);   // 1回の修正量を制限
+    e0 -= de / sc; phi -= dp / sc;
+    if (!isFinite(e0) || !isFinite(phi)) break;
+  }
+  // 予備：曲率について割線法（各曲率で軸力の釣合いを解く）
+  const fM = p => { const e = solveStep(F, mats, p, Nt, g.e0); return e === null ? null : {e, r: trialForces(F, mats, e, p).M - Mt}; };
+  let pa = g.phi, A = fM(pa), pb = g.phi + (Mt >= 0 ? 1 : -1) * 1e-7, B = fM(pb);
+  if (!A || !B) return null;
+  for (let it = 0; it < 60; it++){
+    if (Math.abs(B.r) < tolM) return {e0: B.e, phi: pb};
+    const pc = pb - B.r * (pb - pa) / ((B.r - A.r) || 1e-30);
+    const C = fM(pc); if (!C) return null;
+    pa = pb; A = B; pb = pc; B = C;
+  }
+  return null;
+}
+
+/* ---------- 1 変数の根：解をはさむ区間を探し，Illinois 法で絞る ---------- */
+function rootBracket(f, x0, f0, dir, h0, tol){
+  // f(x) = 0 を x0 から dir 方向に探す。f0 = f(x0)。f が null（解けない）の場合は刻みを縮める
+  let a = x0, fa = f0, h = h0, b = null, fb = null;
+  for (let k = 0; k < 60; k++){
+    const x = a + dir * h, fx = f(x);
+    if (fx === null){ h /= 2; if (h < h0 * 1e-6) return null; continue; }
+    if (fa * fx <= 0){ b = x; fb = fx; break; }
+    a = x; fa = fx; h *= 1.6;
+  }
+  if (b === null) return null;
+  let side = 0;
+  for (let it = 0; it < 80; it++){
+    const c = (a * fb - b * fa) / (fb - fa), fc = f(c);
+    if (fc === null) return null;
+    if (Math.abs(fc) < tol) return c;
+    if (fc * fb > 0){ b = c; fb = fc; if (side === -1) fa /= 2; side = -1; }
+    else { a = c; fa = fc; if (side === 1) fb /= 2; side = 1; }
+    if (Math.abs(b - a) < 1e-14 * Math.max(Math.abs(a), 1e-12)) return c;
+  }
+  return null;
+}
+
+/* ---------- せん断剛性 GA ---------- */
+function shearGA(S, F){
+  const Ac = F.fib.filter(f => f.g === 'cv' || f.g === 'co').reduce((a, f) => a + f.A, 0);
+  let Aw = 0;
+  if (S.steel){
+    const st = S.steel;
+    const web = st.tw * (st.H - 2 * st.tf), fl = 2 * st.B * st.tf;
+    Aw += st.sh === 'H' ? (st.ax === 'strong' ? web : fl) : web + 2 * st.B2 * st.tf2;   // 十字形：強軸側ウェブ＋弱軸側フランジ
+  }
+  const Awt = S.tube ? 2 * S.tube.t * (S.D - 2 * S.tube.t) : 0;
+  const Ec = F.coverC.Ec, Gc = Ec / (2 * 1.2), Gs = S.mat.w.E / (2 * 1.3), Gt = S.mat.t.E / (2 * 1.3);
+  return {GA: 5 / 6 * (Gc * Ac + Gs * Aw + Gt * Awt), Ac, Aw: Aw + Awt, Gc, Gs};
+}
+
+/* ---------- 履歴モデルの図：材料にひずみを往復させる ---------- */
+function driveMat(mat, targets, nPer){
+  const E = [0], Sg = [0]; let cur = 0;
+  for (const t of targets){
+    for (let k = 1; k <= nPer; k++){
+      const e = cur + (t - cur) * k / nPer, r = mat.trial(e);
+      mat.commit(e, r.s); E.push(e * 1000); Sg.push(r.s);
+    }
+    cur = t;
+  }
+  return {E, Sg};
+}
+// 履歴モデルのイメージ：使っているモデルごとに，代表的な値でひずみを往復させた曲線を小さく描く（目盛りなし）
+function sketchRow(sv, items){
+  const cw = 190, ch = 150, pad = 14, W = Math.max(items.length, 1) * cw, H = ch + 22;
+  let g = '';
+  items.forEach((it, i) => {
+    const ox = i * cw, xs = it.x.filter(isFinite), ys = it.y.filter(isFinite);
+    const x0 = Math.min(0, ...xs), x1 = Math.max(0, ...xs), y0 = Math.min(0, ...ys), y1 = Math.max(0, ...ys);
+    const X = v => ox + pad + (cw - 2 * pad) * (v - x0) / ((x1 - x0) || 1), Y = v => pad + (ch - 2 * pad) * (1 - (v - y0) / ((y1 - y0) || 1));
+    g += '<rect x="' + (ox + 4) + '" y="4" width="' + (cw - 8) + '" height="' + (ch - 4) + '" fill="none" stroke="#e3e6e9"/>'
+      + '<line x1="' + X(x0) + '" y1="' + Y(0) + '" x2="' + X(x1) + '" y2="' + Y(0) + '" stroke="#9aa1a8" stroke-width="0.8"/>'
+      + '<line x1="' + X(0) + '" y1="' + Y(y0) + '" x2="' + X(0) + '" y2="' + Y(y1) + '" stroke="#9aa1a8" stroke-width="0.8"/>';
+    let d = '', pen = false;
+    it.x.forEach((xx, j) => { if (!isFinite(xx) || !isFinite(it.y[j])){ pen = false; return; }
+      d += (pen ? 'L' : 'M') + X(xx).toFixed(1) + ' ' + Y(it.y[j]).toFixed(1) + ' '; pen = true; });
+    g += '<path d="' + d + '" fill="none" stroke="#1b2430" stroke-width="1.2"/>'
+      + '<text x="' + (ox + cw / 2) + '" y="' + (ch + 16) + '" text-anchor="middle" font-size="12" fill="#1b2430" ' + FONT + '>' + it.name + '</text>';
+  });
+  sv.setAttribute('viewBox', '0 0 ' + W + ' ' + H); sv.style.maxWidth = W + 'px';
+  sv.innerHTML = g;
+}
+function drawHyst(S, F){
+  // コンクリート：使っている履歴モデルの種類ごと（代表値：σp = 30，εp = 0.002，λ = 0.2，μ = 3，ft = 1.8）
+  const act = ['tb', 'hp', 'st', 'cv'].filter(k => F.models[k] && F.fib.some(f => f.rg === k));
+  const cyrs = [...new Set(act.map(k => S.R[k].cyr))];
+  const CN = {yassin: 'Yassin', kj: 'Karsan-Jirsa', origin: 'Origin-oriented'};
+  const itemsC = cyrs.map(cy => {
+    const Sx = Object.assign({}, S, {Ec: 25000});
+    const m = concreteModel(Sx, {sp: 30, ep: 0.002, la: 0.2, mu: 3, cyr: cy, ku: 0.1, ft: 1.8, ts: 'lin', etu: 0.0006, tsc: 1});
+    const tg = [];
+    for (const k of [1.5, 3.5]){ tg.push(k * m.ecc); tg.push(-0.0004); }
+    const r = driveMat(new ConcMat(m, m.S), tg, 150);
+    return {x: r.E, y: r.Sg, name: CN[cy]};
+  });
+  sketchRow($('hyC'), itemsC);
+  // 鋼材：使っている履歴モデルの種類ごと（代表値：fy = 345，Es = 205000，β = 0.01）
+  const vis = {t: !!S.tube, r: S.bars.length > 0, f: !!S.steel, w: !!S.steel};
+  const hys = [...new Set(['r', 'f', 'w', 't'].filter(k => vis[k]).map(k => S.mat[k].hy))];
+  const SN = {kin: 'Kinematic', iso: 'Isotropic', mp: 'Menegotto-Pinto', ten: 'Tension only'};
+  const itemsS = hys.map(hy => {
+    const pm = {fy: 345, E: 205000, b: 0.01, al: 1, hy}, ey = 345 / 205000, tg = [];
+    for (const k of [3, 8]){ tg.push(k * ey); tg.push(-k * ey); }
+    const r = driveMat(makeSteel(pm), tg, 150);
+    return {x: r.E, y: r.Sg, name: SN[hy]};
+  });
+  sketchRow($('hyS'), itemsS);
+}
+
+/* ---------- 定着部の抜け出しによる材端回転 ---------- */
+function makePen(S, F, opt){
+  if (!opt.pen) return () => 0;
+  const st = F.fib.filter(f => f.g === 'r' || f.g === 's' || f.g === 't');
+  if (!st.length) return () => 0;
+  const yT = Math.min(...st.map(f => f.y)), yB = Math.max(...st.map(f => f.y));   // 外側の鋼材
+  const k = opt.pdist === 'tri' ? 0.5 : 1;
+  // 上下の外側の鋼材について，引張なら伸びを反対側の圧縮縁まわりの回転に換算して足し合わせる
+  // （通常の曲げでは片側だけが引張。曲率の符号が変わっても回転は連続する）
+  return (e0, phi) => {
+    const eB = e0 + phi * (F.yc - yB), eT = e0 + phi * (F.yc - yT);
+    const tB = eB < 0 ? (-eB * opt.ld * k) / yB : 0;             // 下側が伸びる → 正の回転
+    const tT = eT < 0 ? (-eT * opt.ld * k) / (S.D - yT) : 0;     // 上側が伸びる → 負の回転
+    return tB - tT;
+  };
+}
+
+/* ---------- 記録する繊維（固定端断面の最外縁） ---------- */
+function pickFibers(F){
+  const pick = [];
+  const ext = (test, name, kind) => {
+    const idx = F.fib.map((f, i) => i).filter(i => test(F.fib[i]));
+    if (!idx.length) return;
+    const top = idx.reduce((a, b) => F.fib[a].y <= F.fib[b].y ? a : b);
+    const bot = idx.reduce((a, b) => F.fib[a].y >= F.fib[b].y ? a : b);
+    pick.push({i: top, name: name + ' (top)', kind}); if (bot !== top) pick.push({i: bot, name: name + ' (bottom)', kind});
+  };
+  const hasCore = F.fib.some(f => f.g === 'co'), hasCov = F.fib.some(f => f.g === 'cv');
+  if (hasCore && hasCov){
+    ext(f => f.g === 'cv', 'Cover', 'c');
+    ext(f => f.g === 'co', 'Core', 'c');
+  } else ext(f => f.g === 'cv' || f.g === 'co', 'Concrete', 'c');
+  ext(f => f.g === 'r', 'Rebar', 's');
+  ext(f => f.g === 's', 'Steel', 's');
+  ext(f => f.g === 't', 'Tube', 's');
+  return pick;
+}
+function recordFibers(F, sec, pick, hist){
+  pick.forEach((q, k) => {
+    const e = sec.e0 + sec.phi * (F.yc - F.fib[q.i].y);
+    hist[k].e.push(e); hist[k].s.push(sec.mats[q.i].trial(e).s);
+  });
+}
+
+/* ---------- 変動軸力：N = N0 + a·Q + b·R（Nmin～Nmax） ---------- */
+function makeVarN(opt){
+  const N0 = opt.N * 1e3;
+  if (!opt.vn) return {N0, f: null};
+  const lo = opt.vnMin * 1e3, hi = opt.vnMax * 1e3;
+  const f = (Q, d) => Math.min(Math.max(N0 + opt.vnA * Q + opt.vnB * 1e3 * d / opt.L, lo), hi);
+  return {N0: f(0, 0), f};
+}
+// 目標変位 dt で，N と Q が式を満たすよう軸力を割線法で修正しながら solve() を繰り返す
+function solveVarN(vn, dt, Qprev, setN, solve){
+  if (!vn.f) return solve();
+  const tol = 1e-5 * Math.max(Math.abs(vn.N0), 1e4);
+  let N1 = vn.f(Qprev, dt); setN(N1);
+  let r1 = solve(); if (!r1) return null;
+  let h1 = vn.f(r1.r.P, dt) - N1;
+  if (Math.abs(h1) < tol) return r1;
+  let N2 = N1 + h1; setN(N2);
+  let r2 = solve(); if (!r2) return null;
+  for (let it = 0; it < 40; it++){
+    const h2 = vn.f(r2.r.P, dt) - N2;
+    if (Math.abs(h2) < tol) return r2;
+    let N3 = N2 - h2 * (N2 - N1) / ((h2 - h1) || 1e-30);
+    if (!isFinite(N3) || Math.abs(N3 - N2) > 2 * Math.abs(h2) + tol) N3 = N2 + h2;   // 割線が外れたら代入法
+    N1 = N2; h1 = h2; N2 = N3; setN(N2);
+    r2 = solve(); if (!r2) return null;
+  }
+  return null;
+}
+
+/* ---------- 片持ち部材の解析 ---------- */
+function analyzeMember(S, F, opt){
+  const vn = makeVarN(opt);
+  const n = opt.n, L = opt.L, h = L / n;
+  let Nt = vn.N0, Qprev = 0;
+  const x = Array.from({length: n}, (_, j) => j * h);                  // 断面位置（節点，固定端 x = 0。先端は M = 0）
+  const pen = makePen(S, F, opt);
+  const secs = x.map(() => ({mats: F.fib.map(f => f.make()), e0: 0, phi: 0}));
+  const G = shearGA(S, F);
+  // 軸力を先に載荷
+  for (const sc of secs){
+    for (let j = 1; j <= 10; j++){
+      const e = solveStep(F, sc.mats, 0, Nt * j / 10, sc.e0);
+      if (e === null) return {ok: false, msg: 'この軸力では断面が釣り合いません。'};
+      sc.e0 = e; commitAll(F, sc.mats, e, 0);
+    }
+  }
+  let v = new Array(n + 1).fill(0);
+  // 固定端側の曲率 phi1 に対して，目標変位 dt のときの状態を試算する
+  const trial = (phi1, dt) => {
+    const e1 = solveStep(F, secs[0].mats, phi1, Nt, secs[0].e0);
+    if (e1 === null) return null;
+    const M1 = trialForces(F, secs[0].mats, e1, phi1).M;
+    let vv = v.slice(), res = null;
+    for (let pass = 0; pass < (opt.pd ? 8 : 1); pass++){
+      const P = opt.pd ? (M1 - Nt * dt) / L : M1 / L;         // 固定端の曲げから P
+      const st = [{e0: e1, phi: phi1}], Ms = [M1];
+      for (let j = 1; j < n; j++){
+        const Mj = P * (L - x[j]) + (opt.pd ? Nt * (dt - vv[j]) : 0);
+        const g = secs[j].tr || {e0: secs[j].e0, phi: secs[j].phi};
+        const r = sectionMN(F, secs[j].mats, Nt, Mj, g);
+        if (!r) return null;
+        st.push(r); Ms.push(Mj);
+      }
+      // 区間内の曲率を直線分布として回転角・変位を積分（先端の曲率は 0）
+      const ph = st.map(q => q.phi).concat([0]);
+      const tp = pen(e1, phi1);                             // 固定端の抜け出し回転
+      const vn = [0]; let th = tp, vc = 0;
+      for (let j = 0; j < n; j++){
+        vc += h * th + h * h * (2 * ph[j] + ph[j + 1]) / 6;
+        th += h * (ph[j] + ph[j + 1]) / 2;
+        vn.push(vc);
+      }
+      const dp = tp * L, db = vn[n] - dp;
+      const ds = P * L / G.GA;
+      res = {P, db, ds, dp, d: vn[n] + ds, st, Ms, v: vn};
+      const dv = Math.max(...vn.map((q, i) => Math.abs(q - vv[i])));
+      vv = vn;
+      if (!opt.pd || dv < 1e-6 * Math.max(Math.abs(dt), 1)) break;
+    }
+    return res;
+  };
+
+  const out = [];
+  let phi1 = 0, dphiPrev = 0, Pmax = -Infinity, iMax = 0, reason = '最大変位に到達';
+  let dCur = 0, dirPrev = 1, Pmin = Infinity, iMin = 0;
+  const pick = pickFibers(F), hist = pick.map(() => ({e: [0], s: [0]}));
+  const eyRc = S.bars.length ? S.fyr / S.Es : (S.tube ? S.tube.fy : Math.max(S.fyf, S.fyw)) / S.Es;
+  const phiYc = eyRc / (0.5 * S.D);
+  const solveAt = (dt, guess, dguess) => {
+    const f = p => { const r = trial(p, dt); return r ? {r, e: r.d - dt} : null; };
+    let pa = guess, A = f(pa);
+    let pb = guess + (dguess || 1e-7), B = f(pb);
+    const tol = 1e-7 * Math.max(Math.abs(dt), 1);
+    for (let it = 0; it < 50 && A && B; it++){
+      if (Math.abs(B.e) < tol) return {p: pb, r: B.r};
+      const pc = pb - B.e * (pb - pa) / ((B.e - A.e) || 1e-30);
+      if (!isFinite(pc)) break;
+      pa = pb; A = B; pb = pc; B = f(pb);
+    }
+    // 予備：確定状態の曲率から解をはさむ区間を探して絞り込む
+    const g = p => { const r = trial(p, dt); return r ? r.d - dt : null; };
+    const g0 = g(phi1); if (g0 === null) return null;
+    const dir = g0 < 0 ? 1 : -1;
+    const h0 = Math.max(Math.abs(dguess || 0), phiYc / 400);
+    const p = rootBracket(g, phi1, g0, dir, h0, tol);
+    if (p === null) return null;
+    const r = trial(p, dt);
+    return r ? {p, r} : null;
+  };
+  for (let k = 0; k < opt.path.length; k++){
+    const dt = opt.path[k];
+    const dir = Math.sign(dt - dCur) || dirPrev;
+    if (dir !== dirPrev){ dphiPrev = -dphiPrev; dirPrev = dir; }          // 載荷方向の反転
+    // 収束しなければ変位の刻みを半分ずつに分割して解く
+    const targets = [dt];
+    let ok = null, fail = false;
+    while (targets.length){
+      const tg = targets[0], frac = (tg - dCur) / (dt - dCur || 1);
+      const res = solveVarN(vn, tg, Qprev, N_ => { Nt = N_; }, () => solveAt(tg, phi1, dphiPrev * frac));
+      if (res){
+        dphiPrev = (res.p - phi1) / Math.max(frac, 1e-12); phi1 = res.p;
+        res.r.st.forEach((q, j) => { commitAll(F, secs[j].mats, q.e0, q.phi); secs[j].e0 = q.e0; secs[j].phi = q.phi; secs[j].tr = null; });
+        v = res.r.v; dCur = tg; Qprev = res.r.P; targets.shift(); ok = res;
+      } else {
+        if (tg - dCur < opt.dd / 64){ fail = true; break; }
+        targets.unshift(dCur + (tg - dCur) / 2);
+      }
+    }
+    if (fail || !ok){ reason = '収束しなかったため終了'; break; }
+    const R = ok.r;
+    recordFibers(F, secs[0], pick, hist);
+    const t1 = trialForces(F, secs[0].mats, secs[0].e0, secs[0].phi);
+    out.push({d: R.d, db: R.db, ds: R.ds, dp: R.dp || 0, P: R.P, phi: R.st.map(q => q.phi), M: R.Ms.slice(),
+      etop: secs[0].e0 + secs[0].phi * F.yc, ebot: secs[0].e0 - secs[0].phi * (S.D - F.yc), Mb: t1.M, N: Nt});
+    { const s0 = secs[0]; Object.assign(out[out.length - 1], {e0b: s0.e0, phb: s0.phi,
+        sf: Float32Array.from(F.fib, (f, ii) => s0.mats[ii].trial(s0.e0 + s0.phi * (F.yc - f.y)).s)}); }
+    if (R.P > Pmax){ Pmax = R.P; iMax = out.length - 1; }
+    if (R.P < Pmin){ Pmin = R.P; iMin = out.length - 1; }
+    const last = out[out.length - 1];
+    if (!opt.cyc && out.length > iMax + 1 && R.P < opt.rt * Pmax){ reason = '耐力が最大値の ' + opt.rt + ' 倍まで低下'; break; }
+    if (Math.max(last.etop, last.ebot) > 0.06){ reason = '固定端の圧縮縁ひずみが 0.06 に到達'; break; }
+    if (Math.min(last.etop, last.ebot) < -0.06){ reason = '固定端の引張縁ひずみが 0.06 に到達'; break; }
+  }
+  if (opt.cyc && reason === '最大変位に到達') reason = '載荷履歴の終わりまで計算';
+  return {ok: out.length > 0, out, iMax, Pmax, iMin, Pmin, x, G, h, reason, pick, hist, N0: vn.N0};
+}
+
+/* ---------- 逆対称（両端固定・水平移動）の解析 ---------- */
+function analyzeAnti(S, F, opt){
+  const vn = makeVarN(opt);
+  const n = opt.n, L = opt.L, h = L / n;
+  let Nt = vn.N0, Qprev = 0;
+  const x = Array.from({length: n + 1}, (_, j) => j * h);              // 下端 x = 0 から上端 x = L までの節点
+  const pen = makePen(S, F, opt);
+  const secs = x.map(() => ({mats: F.fib.map(f => f.make()), e0: 0, phi: 0}));
+  const G = shearGA(S, F);
+  for (const sc of secs){
+    for (let j = 1; j <= 10; j++){
+      const e = solveStep(F, sc.mats, 0, Nt * j / 10, sc.e0);
+      if (e === null) return {ok: false, msg: 'この軸力では断面が釣り合いません。'};
+      sc.e0 = e; commitAll(F, sc.mats, e, 0);
+    }
+  }
+  const eyRef = S.bars.length ? S.fyr / S.Es : (S.tube ? S.tube.fy : Math.max(S.fyf, S.fyw)) / S.Es;
+  const phiY = eyRef / (0.5 * S.D);
+  let v = new Array(n + 1).fill(0);
+  // 両端の曲率 (p0, pn) と目標変位 dt に対する試算
+  const trial = (p0, pn, dt) => {
+    const ea = solveStep(F, secs[0].mats, p0, Nt, secs[0].e0);
+    const eb = solveStep(F, secs[n].mats, pn, Nt, secs[n].e0);
+    if (ea === null || eb === null) return null;
+    const M0 = trialForces(F, secs[0].mats, ea, p0).M, Mn = trialForces(F, secs[n].mats, eb, pn).M;
+    let vv = v.slice(), res = null;
+    for (let pass = 0; pass < (opt.pd ? 8 : 1); pass++){
+      const V = (M0 - Mn - (opt.pd ? Nt * dt : 0)) / L;               // せん断力 = P
+      const st = new Array(n + 1), Ms = new Array(n + 1);
+      st[0] = {e0: ea, phi: p0}; st[n] = {e0: eb, phi: pn}; Ms[0] = M0; Ms[n] = Mn;
+      for (let j = 1; j < n; j++){
+        const Mj = Mn + V * (L - x[j]) + (opt.pd ? Nt * (dt - vv[j]) : 0);
+        const r = sectionMN(F, secs[j].mats, Nt, Mj, {e0: secs[j].e0, phi: secs[j].phi});
+        if (!r) return null;
+        st[j] = r; Ms[j] = Mj;
+      }
+      const ph = st.map(q => q.phi);
+      const t0 = pen(ea, p0), tn = pen(eb, pn);             // 両端の抜け出し回転
+      const vn = [0]; let th = t0, vc = 0;
+      for (let j = 0; j < n; j++){
+        vc += h * th + h * h * (2 * ph[j] + ph[j + 1]) / 6;
+        th += h * (ph[j] + ph[j + 1]) / 2;
+        vn.push(vc);
+      }
+      th += tn;                                             // 上端のスタブは回転しない：θ(L) = 0
+      const ds = V * L / G.GA, dp = t0 * L;
+      res = {P: V, db: vn[n] - dp, ds, dp, d: vn[n] + ds, th, st, Ms, v: vn, M0, Mn};
+      const dv = Math.max(...vn.map((q, i) => Math.abs(q - vv[i])));
+      vv = vn;
+      if (!opt.pd || dv < 1e-6 * Math.max(Math.abs(dt), 1)) break;
+    }
+    return res;
+  };
+
+  const out = [];
+  let u = [0, 0], du = [phiY * 0.01, -phiY * 0.01], Pmax = -Infinity, iMax = 0, reason = '最大変位に到達';
+  // 目標変位 dt での釣合いを Newton 法で解く（差分ヤコビアン）
+  const solveAt = (dt, g0) => {
+    const R = (a, b) => { const r = trial(a, b, dt); return r ? {r, f: [r.th * L, r.d - dt]} : null; };
+    let a = g0[0], b = g0[1], cur = R(a, b);
+    for (let it = 0; it < 40 && cur; it++){
+      const tol = 1e-7 * Math.max(Math.abs(dt), 1);
+      if (Math.abs(cur.f[0]) < tol && Math.abs(cur.f[1]) < tol) return {a, b, r: cur.r};
+      const ha = Math.max(Math.abs(a), phiY) * 1e-6, hb = Math.max(Math.abs(b), phiY) * 1e-6;
+      const A1 = R(a + ha, b), B1 = R(a, b + hb);
+      if (!A1 || !B1) break;                                                // 予備の解法へ
+      const J = [[(A1.f[0] - cur.f[0]) / ha, (B1.f[0] - cur.f[0]) / hb],
+                 [(A1.f[1] - cur.f[1]) / ha, (B1.f[1] - cur.f[1]) / hb]];
+      const det = J[0][0] * J[1][1] - J[0][1] * J[1][0];
+      if (!(Math.abs(det) > 0)) break;
+      const da = -( J[1][1] * cur.f[0] - J[0][1] * cur.f[1]) / det;
+      const db = -(-J[1][0] * cur.f[0] + J[0][0] * cur.f[1]) / det;
+      let lam = 1, nxt = null;
+      for (let q = 0; q < 8; q++){ nxt = R(a + lam * da, b + lam * db); if (nxt) break; lam /= 2; }
+      if (!nxt) break;
+      a += lam * da; b += lam * db; cur = nxt;
+    }
+    // 予備：上端の曲率を「回転角 0」で解き（内側），下端の曲率を「変位」で解く（外側）
+    const tol = 1e-7 * Math.max(Math.abs(dt), 1);
+    const pnOf = p0 => {
+      const th = pn => { const r = trial(p0, pn, dt); return r ? r.th * L : null; };
+      const t0 = th(u[1]); if (t0 === null) return null;
+      if (Math.abs(t0) < tol) return u[1];
+      return rootBracket(th, u[1], t0, t0 > 0 ? -1 : 1, Math.max(Math.abs(du[1]), phiY / 400), tol);
+    };
+    const gd = p0 => { const pn = pnOf(p0); if (pn === null) return null; const r = trial(p0, pn, dt); return r ? r.d - dt : null; };
+    const gd0 = gd(u[0]); if (gd0 === null) return null;
+    const p0 = Math.abs(gd0) < tol ? u[0]
+      : rootBracket(gd, u[0], gd0, gd0 < 0 ? 1 : -1, Math.max(Math.abs(du[0]), phiY / 400), tol);
+    if (p0 === null) return null;
+    const pn = pnOf(p0); if (pn === null) return null;
+    const rr = trial(p0, pn, dt);
+    return rr ? {a: p0, b: pn, r: rr} : null;
+  };
+  const commitState = (ok) => {
+    ok.r.st.forEach((q, j) => { commitAll(F, secs[j].mats, q.e0, q.phi); secs[j].e0 = q.e0; secs[j].phi = q.phi; });
+    v = ok.r.v;
+  };
+  let dCur = 0, dirPrev = 1, Pmin = Infinity, iMin = 0;
+  const pick = pickFibers(F), hist = pick.map(() => ({e: [0], s: [0]}));
+  for (let k = 0; k < opt.path.length; k++){
+    const dt = opt.path[k];
+    const dir = Math.sign(dt - dCur) || dirPrev;
+    if (dir !== dirPrev){ du = [-du[0], -du[1]]; dirPrev = dir; }          // 載荷方向の反転
+    // 収束しなければ変位の刻みを半分ずつに分割して解く
+    const targets = [dt];
+    let ok = null, fail = false;
+    while (targets.length){
+      const tg = targets[0], frac = (tg - dCur) / (dt - dCur || 1);
+      const g0 = [u[0] + du[0] * frac, u[1] + du[1] * frac];
+      const res = solveVarN(vn, tg, Qprev, N_ => { Nt = N_; }, () => solveAt(tg, g0));
+      if (res){
+        du = [(res.a - u[0]) / Math.max(frac, 1e-12), (res.b - u[1]) / Math.max(frac, 1e-12)];
+        u = [res.a, res.b]; commitState(res); dCur = tg; Qprev = res.r.P; targets.shift(); ok = res;
+      } else {
+        if (tg - dCur < opt.dd / 64){ fail = true; break; }
+        targets.unshift(dCur + (tg - dCur) / 2);
+      }
+    }
+    if (fail || !ok){ reason = '収束しなかったため終了'; break; }
+    const Rr = ok.r;
+    recordFibers(F, secs[0], pick, hist);
+    const edge = j => ({t: secs[j].e0 + secs[j].phi * F.yc, b: secs[j].e0 - secs[j].phi * (S.D - F.yc)});
+    const e0s = edge(0), ens = edge(n);
+    out.push({d: Rr.d, db: Rr.db, ds: Rr.ds, dp: Rr.dp || 0, P: Rr.P, phi: Rr.st.map(q => q.phi), M: Rr.Ms.slice(),
+      Mb: Rr.M0, Mt: Rr.Mn, etop: e0s.t, ebot: e0s.b, etopT: ens.t, ebotT: ens.b, N: Nt});
+    { const s0 = secs[0]; Object.assign(out[out.length - 1], {e0b: s0.e0, phb: s0.phi,
+        sf: Float32Array.from(F.fib, (f, ii) => s0.mats[ii].trial(s0.e0 + s0.phi * (F.yc - f.y)).s)}); }
+    if (Rr.P > Pmax){ Pmax = Rr.P; iMax = out.length - 1; }
+    if (Rr.P < Pmin){ Pmin = Rr.P; iMin = out.length - 1; }
+    if (!opt.cyc && out.length > iMax + 1 && Rr.P < opt.rt * Pmax){ reason = '耐力が最大値の ' + opt.rt + ' 倍まで低下'; break; }
+    const emax = Math.max(e0s.t, ens.t, ens.b), emin = Math.min(e0s.b, ens.b, ens.t, e0s.t);
+    if (emax > 0.06){ reason = '端部の圧縮縁ひずみが 0.06 に到達'; break; }
+    if (emin < -0.06){ reason = '端部の引張縁ひずみが 0.06 に到達'; break; }
+  }
+  if (opt.cyc && reason === '最大変位に到達') reason = '載荷履歴の終わりまで計算';
+  return {ok: out.length > 0, out, iMax, Pmax, iMin, Pmin, x, G, h, reason, anti: true, pick, hist, N0: vn.N0};
+}
+
+/* ---------- 載荷履歴 ---------- */
+function parseAmp(t){
+  t = String(t).trim();
+  if (t === '') return NaN;
+  if (t.indexOf('/') >= 0){
+    const q = t.split('/');
+    if (q.length !== 2 || q[0].trim() === '' || q[1].trim() === '') return NaN;   // 入力途中（1/ など）
+    const a = +q[0], b = +q[1];
+    return (isFinite(a) && isFinite(b) && b > 0) ? a / b : NaN;
+  }
+  return isFinite(+t) ? +t : NaN;
+}
+function addAmpRow(a, n){
+  const tr = document.createElement('tr');
+  tr.innerHTML = '<td><input type="text" value="' + a + '" style="width:90px;padding:4px 6px;border:1px solid #cfd3d8;font:inherit"></td>'
+    + '<td><input type="number" value="' + n + '" step="1" min="1"></td><td><button class="sm" type="button">削除</button></td>';
+  tr.querySelector('button').onclick = () => { tr.remove(); protInfo(); };
+  tr.querySelectorAll('input').forEach(i => i.oninput = protInfo);
+  $('ampRows').appendChild(tr);
+}
+function readProtocol(L){
+  const list = [];
+  const rows = $('ampRows').querySelectorAll('tr');
+  for (const tr of rows){
+    const x = tr.querySelectorAll('input');
+    const a = parseAmp(x[0].value), n = Math.round(+x[1].value);
+    if (!(a > 0) || !isFinite(a) || !(n >= 1) || n > 1000)
+      return {err: '振幅は正の値，回数は 1〜1000 の整数で入力してください。'};
+    const amm = $('au').value === 'R' ? a * L : a;
+    if (!(amm <= 10 * L)) return {err: '振幅が大きすぎます（部材長の10倍を超えています）。'};
+    list.push({a: amm, n, raw: x[0].value});
+  }
+  if (!list.length) return {err: '振幅を1つ以上入力してください。'};
+  return {list};
+}
+// 経路のステップ数（経路を作らずに数える）
+function countSteps(list, dd, mono){
+  let cur = 0, nst = 0;
+  const tg = mono ? [list[0].a] : null;
+  const add = t => { nst += Math.max(1, Math.ceil(Math.abs(t - cur) / dd - 1e-9)); cur = t; };
+  if (mono) add(tg[0]); else for (const q of list) for (let i = 0; i < q.n; i++){ add(q.a); add(-q.a); }
+  return nst;
+}
+const MAX_STEPS = 100000;
+// 変位の経路：各振幅で +a → −a を n 回。単調なら 0 → a
+function buildPath(list, dd, mono){
+  if (!(dd > 0) || countSteps(list, dd, mono) > MAX_STEPS) return null;
+  const tg = [];
+  if (mono) tg.push(list[0].a);
+  else for (const q of list) for (let i = 0; i < q.n; i++) tg.push(q.a, -q.a);
+  const path = []; let cur = 0;
+  for (const t of tg){
+    const m = Math.max(1, Math.ceil(Math.abs(t - cur) / dd - 1e-9));
+    for (let k = 1; k <= m; k++) path.push(cur + (t - cur) * k / m);
+    cur = t;
+  }
+  return path;
+}
+function isR(){ return $('au').value === 'R'; }
+function getDd(L){ return isR() ? parseAmp($('ddR').value) * L : +$('dd').value; }
+function getDmax(L){ return isR() ? parseAmp($('dmaxR').value) * L : +$('dmax').value; }
+function unitToggle(){
+  const r = isR();
+  $('ddRR').classList.toggle('hidden', !r); $('ddmmR').classList.toggle('hidden', r);
+  $('dmaxRR').classList.toggle('hidden', !r); $('dmaxmmR').classList.toggle('hidden', r);
+  protInfo();
+}
+function protInfo(){
+  const L = +$('L').value, pr = readProtocol(L);
+  if (pr.err){ $('protInfo').textContent = pr.err; return; }
+  const dd = getDd(L);
+  const steps = dd > 0 ? countSteps(pr.list, dd) : 0;
+  $('protInfo').textContent = '最大振幅 ' + Math.max(...pr.list.map(q => q.a)).toFixed(1) + ' mm（R = '
+    + (Math.max(...pr.list.map(q => q.a)) / L).toFixed(4) + '），計算ステップ数 ' + steps
+    + (steps > MAX_STEPS ? '（多すぎます。変位の刻みを大きくしてください）' : '');
+}
+$('addAmp').onclick = () => { addAmpRow('1/50', 2); protInfo(); };
+[['1/400', 2], ['1/200', 2], ['1/100', 2], ['1/67', 2], ['1/50', 2], ['1/33', 2]].forEach(r => addAmpRow(...r));
+$('ld').onchange = () => {
+  const c = $('ld').value === 'cyc';
+  $('monoP').classList.toggle('hidden', c); $('cycP').classList.toggle('hidden', !c); protInfo();
+};
+$('pen').onchange = () => $('penP').classList.toggle('hidden', !$('pen').checked);
+$('au').onchange = unitToggle; $('L').oninput = () => { drawSection(); protInfo(); };
+$('dd').oninput = protInfo; $('ddR').oninput = protInfo;
+
+/* ---------- 実行 ---------- */
+let resB = null;
+$('runB').onclick = () => {
+  const S = readInput(); { const bad = concreteCheck(S); if (bad) return status(bad, true); } const F = buildFibers(S);
+  const nIn = +$('nseg').value;
+  if (!(nIn >= 1) || nIn !== Math.round(nIn)) return status('材軸方向の分割数は 1 以上の整数を入力してください。', true);
+  const opt = {mode: $('mode').value, L: +$('L').value, n: nIn, N: +$('N').value,
+               pd: $('pd').checked, rt: +$('rt').value, cyc: $('ld').value === 'cyc', unit: $('au').value,
+               pen: $('pen').checked, ld: +$('lanc').value, pdist: $('pdist').value,
+               vn: $('vn').checked, vnA: +$('vnA').value, vnB: +$('vnB').value, vnMax: +$('vnMax').value, vnMin: +$('vnMin').value};
+  if (opt.vn && !(opt.vnMax > opt.vnMin)) return status('変動軸力の上限は下限より大きい値にしてください。', true);
+  if (opt.pen && !(opt.ld > 0)) return status('定着長さを入力してください。', true);
+  if (!(opt.L > 0)) return status('部材長を入力してください。', true);
+  opt.dd = getDd(opt.L); opt.dmax = getDmax(opt.L);
+  if (!(opt.dd > 0) || !isFinite(opt.dd)) return status((isR() ? '部材角' : '変位') + 'の刻みを正しく入力してください。', true);
+  if (opt.cyc){
+    const pr = readProtocol(opt.L);
+    if (pr.err) return status(pr.err, true);
+    opt.path = buildPath(pr.list, opt.dd); opt.prot = pr.list;
+  } else {
+    if (!(opt.dmax > 0) || !isFinite(opt.dmax)) return status((isR() ? '最大部材角' : '最大変位') + 'を正しく入力してください。', true);
+    opt.path = buildPath([{a: opt.dmax, n: 0}], opt.dd, true);
+  }
+  if (!opt.path) return status('計算ステップ数が ' + MAX_STEPS + ' を超えます。変位の刻みを大きくするか，振幅を見直してください。', true);
+  status('計算しています...');
+  setTimeout(() => {
+    const t0 = Date.now();
+    const r = opt.mode === 'anti' ? analyzeAnti(S, F, opt) : analyzeMember(S, F, opt);
+    if (!r.ok){ status(r.msg || '計算できませんでした。', true); return; }
+    resB = {S, r, opt, F};
+    showB();
+    const last = r.out[r.out.length - 1];
+    status('最大耐力 ' + (r.Pmax / 1e3).toFixed(1) + ' kN。δ = ' + last.d.toFixed(1) + ' mm で終了（' + r.reason
+      + '）。計算時間 ' + ((Date.now() - t0) / 1000).toFixed(1) + ' 秒', r.reason.indexOf('収束') >= 0);
+  }, 20);
+};
+
+function plotMulti(sv, series, xl, yl, H0, legend, top, W0){
+  const H = H0 || 300, m = {l: 70, r: 14, t: 12, b: 36}, W = figW(W0 || 760, H, m);
+  const fin = a => a.filter(v2 => isFinite(v2));
+  const [xlo, xhi] = rng(series.map(s2 => fin(s2.x)).concat([[0]])), [ylo, yhi] = rng(series.map(s2 => fin(s2.y)).concat([[0]]));
+  const {g, X, Y} = frame(W, H, m, xlo, xhi, ylo, yhi, xl, yl);
+  let p = '';
+  for (const s2 of series){
+    let d = '', pen = false;
+    if (!s2.noLine) s2.x.forEach((xx, i) => {
+      if (!isFinite(xx) || !isFinite(s2.y[i])){ pen = false; return; }          // NaN で線を切る
+      d += (pen ? 'L' : 'M') + X(xx).toFixed(1) + ' ' + Y(s2.y[i]).toFixed(1) + ' '; pen = true; });
+    p += '<path d="' + d + '" fill="none" stroke="' + s2.c + '" stroke-width="' + (s2.w || 1.3) + '"'
+      + (s2.dash ? ' stroke-dasharray="' + s2.dash + '"' : '') + '/>';
+    if (s2.mk) s2.x.forEach((xx, i) => { if (!isFinite(xx) || !isFinite(s2.y[i])) return;
+      p += '<circle cx="' + X(xx).toFixed(1) + '" cy="' + Y(s2.y[i]).toFixed(1)
+      + '" r="' + (s2.mr || 2.2) + '" fill="' + (s2.mf || '#fff') + '" stroke="' + s2.c + '" stroke-width="0.9"/>'; });
+  }
+  let lg = '';
+  const all = series; series = series.filter(s2 => !s2.noLeg);
+  if (legend && series.length){
+    const bw = W0 ? 90 : 150, bx = W - m.r - bw - 8, by = top ? m.t + 8 : H - m.b - series.length * 15 - 16;
+    lg = '<rect x="' + bx + '" y="' + by + '" width="' + bw + '" height="' + (series.length * 15 + 8)
+      + '" fill="#fff" fill-opacity="0.9" stroke="#cfd3d8" stroke-width="0.6"/>';
+    series.forEach((s2, k) => { const yy = by + 13 + k * 15;
+      lg += '<line x1="' + (bx + 6) + '" y1="' + (yy - 3) + '" x2="' + (bx + 26) + '" y2="' + (yy - 3) + '" stroke="' + s2.c
+        + '" stroke-width="1.4"' + (s2.dash ? ' stroke-dasharray="' + s2.dash + '"' : '') + '/><text x="' + (bx + 32) + '" y="' + yy
+        + '" font-size="11" fill="#1b2430" ' + FONT + '>' + s2.name + '</text>'; });
+  }
+  sv.setAttribute('viewBox', '0 0 ' + W + ' ' + H);
+  sv.innerHTML = g + p + lg;
+}
+
+function showB(){
+  const {r, opt} = resB, o = r.out;
+  const P = [0].concat(o.map(q => q.P / 1e3));
+  const useR = opt.unit === 'R', sx = useR ? 1 / opt.L : 1;           // 部材角表示なら δ/L
+  const xl = useR ? 'Drift angle R (rad)' : 'Displacement (mm)';
+  $('pdTitle').textContent = useR ? 'せん断力-部材角関係' : 'せん断力-変位関係';
+  const si = stepB();
+  const cmpS = caseSeries('B', (q, i, c) => q.d * (useR ? 1 / c.L : 1), q => q.P / 1e3);
+  const selS = [{x: [o[si].d * sx], y: [o[si].P / 1e3], c: '#1b2430', noLine: true, mk: true, mr: 4, mf: '#1b2430', noLeg: true}];
+  if (opt.cyc)
+    plotMulti($('pPd'), [{x: [0].concat(o.map(q => q.d * sx)), y: P, c: '#1b2430', name: 'Current', w: 1.1}].concat(cmpS, selS),
+      xl, 'Shear force Q (kN)', 360, cmpS.length > 0, true);
+  else
+    plotMulti($('pPd'), [
+      {x: [0].concat(o.map(q => q.d * sx)), y: P, c: '#1b2430', name: 'Total', w: 1.6},
+      {x: [0].concat(o.map(q => q.db * sx)), y: P, c: '#8b939c', name: 'Flexure', dash: '5 3'},
+      {x: [0].concat(o.map(q => q.ds * sx)), y: P, c: '#55606e', name: 'Shear', dash: '1.5 2.5'}]
+      .concat(opt.pen ? [{x: [0].concat(o.map(q => q.dp * sx)), y: P, c: '#b3b9bf', name: 'Pull-out', dash: '6 2 1 2'}] : [])
+      .concat(cmpS, selS),
+      xl, 'Shear force Q (kN)', 320, true);
+  // 変動軸力
+  $('vnOut').classList.toggle('hidden', !opt.vn);
+  if (opt.vn){
+    const Nn = [r.N0 / 1e3].concat(o.map(q => q.N / 1e3));
+    $('pNdT').textContent = useR ? '軸力-部材角関係' : '軸力-変位関係';
+    plotMulti($('pNd'), [{x: [0].concat(o.map(q => q.d * sx)), y: Nn, c: '#1b2430', name: 'N', w: 1.1}],
+      xl, 'Axial force N (kN)', 300, false, true);
+    plotMulti($('pNQ'), [{x: P, y: Nn, c: '#1b2430', name: 'N', w: 1.1}],
+      'Shear force Q (kN)', 'Axial force N (kN)', 300, false, true);
+  }
+  // 応力-ひずみ履歴
+  const sty = [['#1b2430', ''], ['#8b939c', '5 3'], ['#55606e', '2 2'], ['#b3b9bf', '1.5 2.5'], ['#1b2430', '6 2 1 2'], ['#8b939c', '1 3']];
+  const hc = [], hs = [];
+  r.pick.forEach((q, k) => {
+    const ex = r.hist[k].e.map(v2 => v2 * 1000);
+    // コンクリートは引張ひずみ -5×10⁻³ までを表示（引張応力は ft 以下）
+    (q.kind === 'c' ? hc : hs).push({x: q.kind === 'c' ? ex.map(v2 => v2 < -5 ? NaN : v2) : ex, y: r.hist[k].s, name: q.name}); });
+  hc.forEach((q, k) => { q.c = sty[k % 6][0]; q.dash = sty[k % 6][1]; q.w = 1.1; });
+  hs.forEach((q, k) => { q.c = sty[k % 6][0]; q.dash = sty[k % 6][1]; q.w = 1.1; });
+  if (hc.length) plotMulti($('hC'), hc, 'Strain (\u00d710\u207b\u00b3)', 'Stress (N/mm\u00b2)', 300, true, true); else $('hC').innerHTML = '';
+  if (hs.length) plotMulti($('hS'), hs, 'Strain (\u00d710\u207b\u00b3)', 'Stress (N/mm\u00b2)', 300, true, true); else $('hS').innerHTML = '';
+  const q = o[r.iMax], qf = o[o.length - 1];
+  const qn = opt.cyc ? o[r.iMin] : null;
+  $('tblB').innerHTML = '<tbody>'
+    + (opt.vn ? '<tr data-k="vn"><td>軸力</td><td>初期 ' + (r.N0 / 1e3).toFixed(1) + ' kN，最大 ' + (Math.max(...o.map(q => q.N)) / 1e3).toFixed(1)
+      + ' kN，最小 ' + (Math.min(...o.map(q => q.N)) / 1e3).toFixed(1) + ' kN，最大耐力時 ' + (q.N / 1e3).toFixed(1) + ' kN</td></tr>' : '')
+    + '<tr data-k="qmax"><td>最大耐力 Qmax</td><td>' + (r.Pmax / 1e3).toFixed(1) + ' kN'
+      + (opt.cyc ? '（負側 ' + (r.Pmin / 1e3).toFixed(1) + ' kN，δ = ' + qn.d.toFixed(2) + ' mm）' : '') + '</td></tr>'
+    + '<tr data-k="dmax"><td>最大耐力時の変位</td><td>' + q.d.toFixed(2) + ' mm（R = ' + (q.d / opt.L).toFixed(4) + '），曲げ '
+      + q.db.toFixed(2) + ' ＋ せん断 ' + q.ds.toFixed(2) + (opt.pen ? ' ＋ 抜け出し ' + q.dp.toFixed(2) : '') + ' mm</td></tr>'
+    + '<tr data-k="ga"><td>せん断剛性 GA</td><td>' + (r.G.GA / 1e3).toFixed(0) + ' kN（Ac = ' + r.G.Ac.toFixed(0) + ' mm²，Aw = '
+      + r.G.Aw.toFixed(0) + ' mm²）</td></tr>'
+    + (r.anti ? '<tr data-k="endm"><td>最大耐力時の端部モーメント</td><td>下端 ' + (q.Mb / 1e6).toFixed(1) + '，上端 '
+      + (q.Mt / 1e6).toFixed(1) + ' kN·m（反曲点高さ ' + (opt.L * q.Mb / (q.Mb - q.Mt)).toFixed(0) + ' mm）</td></tr>' : '')
+    + '<tr data-k="seg"><td>区間の長さ</td><td>' + r.h.toFixed(1) + ' mm × ' + opt.n + '</td></tr></tbody>';
+  const hx = r.anti ? r.x : r.x.concat([opt.L]);
+  const tail = r.anti ? [] : [0];
+  const pick = [[q, 'At Qmax', '#1b2430', ''], [qf, 'Final', '#8b939c', '5 3'], [o[si], 'Selected', '#55606e', '2 2']];
+  plotMulti($('pPhi'), pick.map(a => ({x: a[0].phi.map(v2 => v2 * 1000).concat(tail), y: hx, c: a[2], name: a[1], dash: a[3], mk: true})),
+    'Curvature (1/m)', 'Height from base (mm)', 300, true, true);
+  plotMulti($('pMd'), pick.map(a => ({x: a[0].M.map(v2 => v2 / 1e6).concat(tail), y: hx, c: a[2], name: a[1], dash: a[3], mk: true})),
+    'Moment (kN\u00b7m)', 'Height from base (mm)', 300, true, true);
+  $('outB').classList.remove('hidden');
+  applyTbl('B'); applyFig('B'); drawXY('B');
+}
+
+/* ---------- 描画の共通部品（Arial 斜体） ---------- */
+const FONT = 'font-family="Arial, Helvetica, sans-serif" font-style="italic"';
+function ticks(lo, hi){
+  // 目盛り間隔：幅/8 以上となる 1・2・5×10^n の最小値
+  const span = hi - lo, raw = (span || 1) / 8, mag = Math.pow(10, Math.floor(Math.log10(raw)));
+  const c = [1, 2, 5, 10].map(k => k * mag).find(k => k >= raw);
+  const o = []; for (let k = Math.ceil(lo / c - 1e-9); k * c <= hi + 1e-9 * c; k++) o.push(+(k * c).toPrecision(10));
+  return o;
+}
+function frame(W, H, m, xlo, xhi, ylo, yhi, xl, yl){
+  const iw = W - m.l - m.r, ih = H - m.t - m.b;
+  const X = v => m.l + iw * (v - xlo) / (xhi - xlo), Y = v => m.t + ih * (1 - (v - ylo) / (yhi - ylo));
+  let g = '<rect x="' + m.l + '" y="' + m.t + '" width="' + iw + '" height="' + ih + '" fill="none" stroke="#cfd3d8"/>';
+  for (const v of ticks(xlo, xhi)) g += '<line x1="' + X(v) + '" y1="' + m.t + '" x2="' + X(v) + '" y2="' + (m.t + ih)
+    + '" stroke="#eceef0"/><text x="' + X(v) + '" y="' + (m.t + ih + 16) + '" text-anchor="middle" font-size="11" fill="#55606e" '
+    + FONT + '>' + (+v.toPrecision(4)) + '</text>';
+  for (const v of ticks(ylo, yhi)) g += '<line x1="' + m.l + '" y1="' + Y(v) + '" x2="' + (m.l + iw) + '" y2="' + Y(v)
+    + '" stroke="#eceef0"/><text x="' + (m.l - 6) + '" y="' + (Y(v) + 4) + '" text-anchor="end" font-size="11" fill="#55606e" '
+    + FONT + '>' + (+v.toPrecision(4)) + '</text>';
+  if (xlo < 0 && xhi > 0) g += '<line x1="' + X(0) + '" y1="' + m.t + '" x2="' + X(0) + '" y2="' + (m.t + ih) + '" stroke="#9aa1a8"/>';
+  if (ylo < 0 && yhi > 0) g += '<line x1="' + m.l + '" y1="' + Y(0) + '" x2="' + (m.l + iw) + '" y2="' + Y(0) + '" stroke="#9aa1a8"/>';
+  g += '<text x="' + (m.l + iw / 2) + '" y="' + (H - 6) + '" text-anchor="middle" font-size="12" fill="#1b2430" ' + FONT + '>' + xl + '</text>'
+    + '<text x="14" y="' + (m.t + ih / 2) + '" text-anchor="middle" font-size="12" fill="#1b2430" ' + FONT
+    + ' transform="rotate(-90 14 ' + (m.t + ih / 2) + ')">' + yl + '</text>';
+  return {g, X, Y};
+}
+function rng(arrs){
+  let lo = Infinity, hi = -Infinity;
+  for (const a of arrs) for (const v of a){ if (v < lo) lo = v; if (v > hi) hi = v; }
+  if (!(hi > lo)){ hi = lo + 1; lo -= 1; }
+  const p = (hi - lo) * 0.06; return [lo - p, hi + p];
+}
+function plotLines(sv, x, ys, xl, yl, H0, legend, W0){
+  const H = H0 || 280, m = {l: 70, r: 14, t: 12, b: 36}, W = figW(W0 || 760, H, m);
+  const [xlo, xhi] = rng([x, [0]]), [ylo, yhi] = rng(ys.map(s => s.y).concat([[0]]));
+  const {g, X, Y} = frame(W, H, m, Math.min(0, xlo), xhi, ylo, yhi, xl, yl);
+  let p = '';
+  for (const s of ys){
+    let d = '';
+    for (let i = 0; i < x.length; i++) d += (i ? 'L' : 'M') + X(x[i]).toFixed(1) + ' ' + Y(s.y[i]).toFixed(1) + ' ';
+    p += '<path d="' + d + '" fill="none" stroke="' + s.c + '" stroke-width="' + (s.w || 1.3) + '"'
+      + (s.dash ? ' stroke-dasharray="5 3"' : '') + '/>';
+  }
+  let lg = '';
+  if (legend){
+    const bw = W0 ? 100 : 150, bx = W - m.r - bw - 8, by = m.t + 8;
+    lg = '<rect x="' + bx + '" y="' + by + '" width="' + bw + '" height="' + (ys.length * 15 + 8)
+      + '" fill="#fff" fill-opacity="0.9" stroke="#cfd3d8" stroke-width="0.6"/>';
+    ys.forEach((s, k) => { const yy = by + 13 + k * 15;
+      lg += '<line x1="' + (bx + 6) + '" y1="' + (yy - 3) + '" x2="' + (bx + 26) + '" y2="' + (yy - 3) + '" stroke="' + s.c
+        + '" stroke-width="1.4"' + (s.dash ? ' stroke-dasharray="5 3"' : '') + '/><text x="' + (bx + 32) + '" y="' + yy
+        + '" font-size="11" fill="#1b2430" ' + FONT + '>' + s.name + '</text>'; });
+  }
+  sv.setAttribute('viewBox', '0 0 ' + W + ' ' + H);
+  sv.innerHTML = g + p + lg;
+  return {X, Y};
+}
+
+/* ---------- 断面図と材料曲線 ---------- */
+function drawSection(){
+  let S;
+  try { S = readInput(); } catch (e) { return; }
+  $('stlDim').classList.toggle('hidden', $('sh').value === 'none');
+  $('Llb').textContent = $('mode').value === 'anti' ? '部材長 L（内法）' : '部材長 L（せん断スパン）';
+  for (const k of ['cv', 'tb', 'hp', 'st']){               // 係数の記号と入力欄
+    const cy = $('cyr_' + k).value;
+    $('hl_' + k).textContent = cy === 'yassin' ? 'ku' : '—'; $('ku_' + k).style.visibility = cy === 'yassin' ? 'visible' : 'hidden';
+    $('tl_' + k).textContent = $('ts_' + k).value === 'lin' ? 'εtu' : 'c';
+  }
+  $('tubeP').classList.toggle('hidden', !S.tube);
+  $('axR').classList.toggle('hidden', $('sh').value !== 'H');
+  { const X_ = $('sh').value === 'X', two = X_ && !$('xsame').checked;
+    $('xsameR').classList.toggle('hidden', !X_); $('xNote').classList.toggle('hidden', !X_);
+    $('xHead').classList.toggle('hidden', !two);
+    document.querySelectorAll('#stlP .x2').forEach(e => e.classList.toggle('off', !two)); }
+  $('rw_tb').classList.toggle('hidden', !S.tube);
+  { // 鋼材の表：ある鋼材の行だけ表示。α は引張専用の行だけ
+    const vis = {t: !!S.tube, r: S.bars.length > 0, f: !!S.steel, w: !!S.steel};
+    for (const k of ['t', 'r', 'f', 'w']) $('sr_' + k).classList.toggle('hidden', !vis[k]);
+  }
+  $('rw_hp').classList.toggle('hidden', !S.bars.length);
+  $('rw_st').classList.toggle('hidden', !S.steel);
+  $('EcR').classList.toggle('hidden', S.ecm === 'aij');
+  $('aijP').classList.toggle('hidden', S.ecm !== 'aij');
+  $('EcInfo').textContent = S.ecm === 'aij' ? 'Ec = 3.35×10⁴ ×（γ/24）²×（σB/60）^(1/3) = ' + S.Ec.toFixed(0) + ' N/mm²' : '';
+  const bad = concreteCheck(S);
+  if (!(S.b > 0 && S.D > 0)) return;
+  const W = 260, H = 260, pad = 16, sc = (W - 2 * pad) / Math.max(S.b, S.D);
+  const ox = (W - S.b * sc) / 2, oy = (H - S.D * sc) / 2;
+  const X = x => ox + x * sc, Y = y => oy + y * sc;
+  let g = '<rect x="' + X(0) + '" y="' + Y(0) + '" width="' + S.b * sc + '" height="' + S.D * sc
+    + '" fill="#f4f5f6" stroke="#1b2430" stroke-width="1"/>';
+  const F = buildFibers(S);
+  for (let k = 1; k < F.n; k++) g += '<line x1="' + X(0) + '" y1="' + Y(k * F.h) + '" x2="' + X(S.b) + '" y2="' + Y(k * F.h)
+    + '" stroke="#dfe2e5" stroke-width="0.5"/>';
+  if (S.tube){
+    const t = S.tube.t;
+    g += '<path d="M' + X(0) + ' ' + Y(0) + 'H' + X(S.b) + 'V' + Y(S.D) + 'H' + X(0) + 'Z M' + X(t) + ' ' + Y(t)
+      + 'V' + Y(S.D - t) + 'H' + X(S.b - t) + 'V' + Y(t) + 'Z" fill="#8b939c" fill-rule="evenodd"/>';
+  }
+  for (const bx of F.boxes)                              // コンクリートの領域（破線）
+    g += '<polygon points="' + bx.pts.map(q => X(S.b / 2 + q[0]).toFixed(1) + ',' + Y(S.D / 2 + q[1]).toFixed(1)).join(' ')
+      + '" fill="none" stroke="#55606e" stroke-width="0.8" stroke-dasharray="' + ({tb: '1.5 2', hp: '4 3', st: '7 2'})[bx.k] + '"/>';
+  if (S.steel){
+    const st = S.steel, cx = S.b / 2, cy = S.D / 2;
+    const R = (x, y, w, h) => '<rect x="' + X(x) + '" y="' + Y(y) + '" width="' + w * sc + '" height="' + h * sc + '" fill="#8b939c"/>';
+    const Hs = (rot, H, B, tw, tf) => rot
+      ? R(cx - H / 2, cy - B / 2, tf, B) + R(cx + H / 2 - tf, cy - B / 2, tf, B)
+        + R(cx - H / 2, cy - tw / 2, H, tw)
+      : R(cx - B / 2, cy - H / 2, B, tf) + R(cx - B / 2, cy + H / 2 - tf, B, tf)
+        + R(cx - tw / 2, cy - H / 2, tw, H);
+    g += st.sh === 'H' ? Hs(st.ax === 'weak', st.H, st.B, st.tw, st.tf)
+      : Hs(false, st.H, st.B, st.tw, st.tf) + Hs(true, st.H2, st.B2, st.tw2, st.tf2);
+  }
+  for (const r of S.bars){
+    const nb = r.n, xs = [];
+    if (nb === 1) xs.push(S.b / 2);
+    else for (let i = 0; i < nb; i++) xs.push(S.cc + r.d / 2 + (S.b - 2 * (S.cc + r.d / 2)) * i / (nb - 1));
+    for (const x of xs) g += '<circle cx="' + X(x) + '" cy="' + Y(r.y) + '" r="' + Math.max(r.d / 2 * sc, 1.5) + '" fill="#1b2430"/>';
+  }
+  $('sec').setAttribute('viewBox', '0 0 ' + W + ' ' + H);
+  $('sec').innerHTML = g;
+  const Ast = S.steel ? F.fib.filter(f => f.g === 's').reduce((a, f) => a + f.A, 0) : 0;
+  const Arb = S.bars.reduce((a, r) => a + r.A, 0);
+  const Atb = S.tube ? F.fib.filter(f => f.g === 't').reduce((a, f) => a + f.A, 0) : 0;
+  $('secInfo').textContent = '分割 ' + F.n + '（約 ' + F.h.toFixed(1) + ' mm），主筋 ' + Arb.toFixed(0) + ' mm²'
+    + (S.steel ? '，鉄骨 ' + Ast.toFixed(0) + ' mm²' : '') + (S.tube ? '，鋼管 ' + Atb.toFixed(0) + ' mm²' : '');
+  if (S.steel && S.steel.sh === 'X' && (S.steel.B / 2 > S.steel.H2 / 2 - S.steel.tf2 || S.steel.B2 / 2 > S.steel.H / 2 - S.steel.tf))
+    $('secInfo').textContent += '（十字形のフランジ同士が干渉しています）';
+
+  // コンクリートの応力-ひずみ関係（領域ごと）
+  if (bad){
+    if ($('mat')) $('mat').innerHTML = '';
+    $('matInfo').textContent = bad;
+    ['hyC', 'hyS'].forEach(id => { if ($(id)) $(id).innerHTML = ''; });
+    return;
+  }
+  const RN = {cv: ['Cover', '#8b939c', '5 3'], tb: ['Tube core', '#1b2430', ''], hp: ['Hoop core', '#55606e', '2 2'], st: ['Steel core', '#1b2430', '6 2 1 2']};
+  const act = ['tb', 'hp', 'st', 'cv'].filter(k => F.models[k] && F.fib.some(f => f.rg === k));   // 面積のある領域だけ
+  const emx = Math.max(...act.map(k => F.models[k].e2)) * 1.25;
+  const eNeg = act.some(k => S.R[k].ft > 0) ? -Math.min(Math.max(...act.map(k => S.R[k].ts === 'lin' ? S.R[k].etu * 1.5 : 0.0005), 0.0005), 0.004) : 0;
+  const es = [];
+  for (let i = 0; i <= 240; i++) es.push(eNeg + (emx - eNeg) * i / 240);
+  const ex = es.map(e => e * 1000);
+  const series = act.map(k => ({x: ex, y: es.map(e => F.models[k].sig(e)), c: RN[k][1], name: RN[k][0], dash: RN[k][2], w: 1.3}));
+  if ($('mat')) plotMulti($('mat'), series, 'Strain (×10\u207b\u00b3)', 'Stress (N/mm\u00b2)', 250, true, true, 420);
+  drawHyst(S, F);
+  // 鋼材（バイリニア，引張・圧縮対称）
+  const esS = [], ser = [];
+  const stl = [];
+  if (S.bars.length) stl.push(['Rebar', S.fyr, '#1b2430', '']);
+  if (S.steel){ stl.push(['Flange', S.fyf, '#55606e', '5 3']); if (S.fyw !== S.fyf) stl.push(['Web', S.fyw, '#8b939c', '2 2']); }
+  if (S.tube) stl.push(['Tube', S.tube.fy, '#8b939c', '1.5 2.5']);
+  if (stl.length){
+    const emx = 0.02;
+    for (let i = 0; i <= 200; i++) esS.push((-emx + 2 * emx * i / 200) * 1000);
+    for (const q of stl){ const f = steelModel(q[1], S.Es, S.ph);
+      ser.push({y: esS.map(e => f(e / 1000)), c: q[2], name: q[0], dash: q[3]}); }
+    if ($('matS')) plotLines($('matS'), esS, ser, 'Strain (×10\u207b\u00b3)', 'Stress (N/mm\u00b2)', 250, true, 420);
+  } else if ($('matS')) $('matS').innerHTML = '';
+  const NM = {cv: 'カバー', tb: '鋼管内', hp: '帯筋内', st: '鉄骨内'};
+  $('matInfo').textContent = 'Ec = ' + S.Ec.toFixed(0) + ' N/mm²。' + act.map(k => { const q = F.models[k];
+    return NM[k] + '：n = ' + q.n.toFixed(2) + '，折れ点 ' + (q.e2 * 1000).toFixed(2) + '×10⁻³，' + q.s2.toFixed(1) + ' N/mm²'; }).join('／');
+}
+
+/* ---------- 断面の解析（M-φ・M-N） ---------- */
+let resM = null, resN = null;
+/* ---------- 断面力 ---------- */
+function forces(F, e0, phi){
+  const o = {N: 0, M: 0, Nc: 0, Nr: 0, Ns: 0, Mc: 0, Mr: 0, Ms: 0, Nv: 0, Mv: 0, Nk: 0, Mk: 0, Nt: 0, Mt: 0};
+  for (const f of F.fib){
+    const arm = F.yc - f.y, e = e0 + phi * arm;
+    const P = f.sig(e) * f.A, Mo = P * arm;
+    o.N += P; o.M += Mo;
+    if (f.g === 'cv'){ o.Nv += P; o.Mv += Mo; o.Nc += P; o.Mc += Mo; }      // かぶり
+    else if (f.g === 'co'){ o.Nk += P; o.Mk += Mo; o.Nc += P; o.Mc += Mo; } // コア
+    else if (f.g === 'r'){ o.Nr += P; o.Mr += Mo; }
+    else if (f.g === 't'){ o.Nt += P; o.Mt += Mo; }                          // 鋼管
+    else { o.Ns += P; o.Ms += Mo; }
+  }
+  return o;
+}
+function solveE0(F, phi, Nt, guess){
+  const g = e => forces(F, e, phi).N - Nt;
+  let a = guess, fa = g(a), step = 2e-5, b = a, fb = fa, k = 0;
+  if (fa === 0) return a;
+  while (k++ < 80){
+    b = a + (fa < 0 ? step : -step); fb = g(b);
+    if (fa * fb <= 0) break;
+    a = b; fa = fb; step *= 1.6;
+  }
+  if (fa * fb > 0) return null;
+  let lo = Math.min(a, b), hi = Math.max(a, b), flo = lo === a ? fa : fb;
+  for (let i = 0; i < 70; i++){
+    const mid = (lo + hi) / 2, fm = g(mid);
+    if (flo * fm <= 0) hi = mid; else { lo = mid; flo = fm; }
+  }
+  return (lo + hi) / 2;
+}
+
+/* ---------- M-φ ---------- */
+function mphi(S, F, Nk, ratio, coarse){
+  const Nt = Nk * 1e3;
+  const eyRef = S.bars.length ? S.fyr / S.Es : (S.tube ? S.tube.fy : Math.max(S.fyf, S.fyw)) / S.Es;
+  const phiY = eyRef / (0.5 * S.D);
+  const dphi = phiY / (coarse ? 25 : 60);
+  let e0 = solveE0(F, 0, Nt, 0);
+  if (e0 === null) return {ok: false, msg: 'この軸力では断面が釣り合いません（軸耐力を超えています）。'};
+  const out = [];
+  let Mmax = -Infinity, iMax = 0;
+  for (let i = 1; i <= 8000; i++){
+    const phi = i * dphi;
+    const e = solveE0(F, phi, Nt, e0);
+    if (e === null) break;
+    e0 = e;
+    const o = forces(F, e0, phi);
+    o.phi = phi; o.etop = e0 + phi * F.yc; o.xn = F.yc + e0 / phi;   // 上端からの中立軸深さ
+    out.push(o);
+    if (o.M > Mmax){ Mmax = o.M; iMax = out.length - 1; }
+    if (phi > phiY && o.M < ratio * Mmax) break;          // ひび割れ直後の低下では止めない
+    if (o.etop > 0.06) break;                               // 圧縮縁のひずみ上限
+    if (e0 - phi * (S.D - F.yc) < -0.06) break;            // 引張縁のひずみ上限
+  }
+  return {ok: out.length > 0, out, iMax, Mmax};
+}
+
+/* ---------- 実行 ---------- */
+$('runM').onclick = () => {
+  const S = readInput(); { const bad = concreteCheck(S); if (bad) return status(bad, true); } const F = buildFibers(S);
+  status('計算しています...');
+  setTimeout(() => {
+    const t0 = Date.now();
+    const r = mphi(S, F, +$('N').value, +$('rt').value, false);
+    if (!r.ok){ status(r.msg || '計算できませんでした。', true); return; }
+    resM = {S, r, F};
+    showM();
+    const last = r.out[r.out.length - 1];
+    status('最大耐力 ' + (r.Mmax / 1e6).toFixed(1) + ' kN·m（計算時間 ' + ((Date.now() - t0) / 1000).toFixed(2)
+      + ' 秒）' + (last.M >= +$('rt').value * r.Mmax ? '。耐力低下前に計算を打ち切りました（縁ひずみ ±0.06）' : ''));
+  }, 20);
+};
+
+$('runN').onclick = () => {
+  const S = readInput(); { const bad = concreteCheck(S); if (bad) return status(bad, true); } const F = buildFibers(S);
+  // 純圧縮耐力：断面に一様な圧縮ひずみを与えたときの最大軸力
+  let N0 = 0;
+  for (let i = 1; i <= 600; i++){
+    const e = 0.02 * i / 600;
+    let nc = 0; for (const f of F.fib) nc += f.sig(e) * f.A;
+    N0 = Math.max(N0, nc);
+  }
+  // 純引張耐力：鋼材の降伏耐力の和（コンクリートの引張は含めない）
+  let Nt = 0;
+  for (const r of S.bars) Nt += S.fyr * r.A;
+  for (const f of F.fib){
+    if (f.g === 's' || f.g === 't') Nt += f.fy * f.A;
+  }
+  // 軸力の点：純引張・純圧縮の近傍を避け，−0.85Nt から 0.95N0 までを等間隔に28分割
+  const nPt = 28, list = [], rT = 0.85, rC = 0.95;
+  for (let i = 0; i <= nPt; i++) list.push(-rT * Nt + (rC * N0 + rT * Nt) * i / nPt);
+  const pts = [];
+  const rt = +$('rt').value;
+  $('runN').disabled = true;
+  const t0 = Date.now();
+  const step = k => {
+    if (k >= list.length){
+      $('runN').disabled = false;
+      resN = {pts};
+      showN();
+      status('M-N 相互作用図 ' + pts.length + ' 点（計算時間 ' + ((Date.now() - t0) / 1000).toFixed(1) + ' 秒）');
+      return;
+    }
+    status('M-N を計算しています ... ' + (k + 1) + ' / ' + list.length);
+    const r = mphi(S, F, list[k] / 1e3, rt, true);
+    if (r.ok){
+      const q = r.out[r.iMax];
+      pts.push({N: list[k] / 1e3, M: r.Mmax / 1e6,
+        Nc: q.Nc / 1e3, Mc: q.Mc / 1e6, Nr: q.Nr / 1e3, Mr: q.Mr / 1e6,
+        Ns: q.Ns / 1e3, Ms: q.Ms / 1e6, Nt: q.Nt / 1e3, Mt: q.Mt / 1e6});
+    }
+    setTimeout(() => step(k + 1), 0);
+  };
+  setTimeout(() => step(0), 20);
+};
+
+function showM(){
+  const {r} = resM, o = r.out;
+  const phi = o.map(q => q.phi * 1000);                  // 1/m
+  const si = stepM();
+  plotMulti($('pM'), [{x: phi, y: o.map(q => q.M / 1e6), c: '#1b2430', name: 'Current', w: 1.4}]
+    .concat(caseSeries('M', q => q.phi * 1000, q => q.M / 1e6))
+    .concat([{x: [phi[si]], y: [o[si].M / 1e6], c: '#1b2430', noLine: true, mk: true, mr: 4, mf: '#1b2430', noLeg: true}]),
+    'Curvature (1/m)', 'Moment (kN\u00b7m)', 300, CASES.M.length > 0, true);
+  const hasS = o.some(q => q.Ns !== 0 || q.Ms !== 0), hasR = o.some(q => q.Nr !== 0 || q.Mr !== 0);
+  const hasT = o.some(q => q.Nt !== 0 || q.Mt !== 0), hasV = o.some(q => q.Nv !== 0 || q.Mv !== 0);
+  const hasK = o.some(q => q.Nk !== 0 || q.Mk !== 0);
+  const parts = [['Total', 'M', 'N', '#1b2430', false, 1.6]];
+  if (hasV) parts.push([hasK ? 'Concrete (cover)' : 'Concrete', 'Mv', 'Nv', hasK ? '#b3b9bf' : '#8b939c', false, 1.3]);
+  if (hasK) parts.push([hasT ? 'Concrete (infill)' : 'Concrete (core)', 'Mk', 'Nk', '#6b737c', false, 1.3]);
+  if (hasT) parts.push(['Steel tube', 'Mt', 'Nt', '#1b2430', true, 1.6]);
+  if (hasR) parts.push(['Rebar', 'Mr', 'Nr', '#55606e', true, 1.3]);
+  if (hasS) parts.push(['Steel', 'Ms', 'Ns', '#1b2430', true, 1.3]);
+  plotLines($('pMc'), phi, parts.map(a => ({y: o.map(q => q[a[1]] / 1e6), c: a[3], name: a[0], dash: a[4], w: a[5]})),
+    'Curvature (1/m)', 'Moment (kN\u00b7m)', 270, true);
+  plotLines($('pNc'), phi, parts.map(a => ({y: o.map(q => q[a[2]] / 1e3), c: a[3], name: a[0], dash: a[4], w: a[5]})),
+    'Curvature (1/m)', 'Axial force (kN)', 270, true);
+  const q = o[r.iMax];
+  const row = (nm, n, m, k) => '<tr data-k="' + k + '"><td>' + nm + '</td><td>' + (n / 1e3).toFixed(1) + '</td><td>' + (m / 1e6).toFixed(1)
+    + '</td><td>' + (q.M ? (100 * m / q.M).toFixed(1) : '–') + '</td></tr>';
+  $('tbl').innerHTML = '<thead><tr><th></th><th>軸力 (kN)</th><th>曲げ (kN·m)</th><th>曲げの割合 (%)</th></tr></thead><tbody>'
+    + (hasV ? row(hasK ? 'コンクリート（かぶり）' : 'コンクリート', q.Nv, q.Mv, 'cv') : '')
+    + (hasK ? row('コンクリート（コア）', q.Nk, q.Mk, 'co') : '')
+    + (hasT ? row('鋼管', q.Nt, q.Mt, 'tb') : '')
+    + (hasR ? row('主筋', q.Nr, q.Mr, 'r') : '') + (hasS ? row('鉄骨', q.Ns, q.Ms, 's') : '')
+    + row('合計', q.N, q.M, 'tot') + '</tbody>'
+    + '<tfoot><tr data-k="info"><td colspan="4" style="text-align:left;color:#55606e;font-size:12.5px">φ = ' + (q.phi * 1000).toFixed(4)
+    + ' 1/m，圧縮縁ひずみ ' + (q.etop * 1000).toFixed(2) + '×10⁻³，中立軸深さ ' + q.xn.toFixed(1) + ' mm</td></tr></tfoot>';
+  $('outM').classList.remove('hidden');
+  applyTbl('M'); applyFig('M'); drawXY('M');
+}
+
+function showN(){
+  const p = resN.pts;
+  const H = 360, m = {l: 70, r: 14, t: 12, b: 36}, W = figW(760, H, m);
+  const Ms = p.map(q => q.M).concat(...CASES.N.map(c => c.rows.map(q => q.M))), Ns = p.map(q => q.N).concat(...CASES.N.map(c => c.rows.map(q => q.N)));
+  const [mlo, mhi] = rng([Ms, Ms.map(v => -v), [0]]), [nlo, nhi] = rng([Ns, [0]]);
+  const mm = Math.max(-mlo, mhi);
+  const {g, X, Y} = frame(W, H, m, -mm, mm, nlo, nhi, 'Moment (kN\u00b7m)', 'Axial force (kN)');
+  let d1 = '', d2 = '', mk = '';
+  p.forEach((q, i) => {
+    d1 += (i ? 'L' : 'M') + X(q.M).toFixed(1) + ' ' + Y(q.N).toFixed(1) + ' ';
+    d2 += (i ? 'L' : 'M') + X(-q.M).toFixed(1) + ' ' + Y(q.N).toFixed(1) + ' ';
+    for (const sg of [1, -1])
+      mk += '<circle cx="' + X(sg * q.M).toFixed(1) + '" cy="' + Y(q.N).toFixed(1)
+        + '" r="2.6" fill="#fff" stroke="#1b2430" stroke-width="1"/>';
+  });
+  $('pMN').setAttribute('viewBox', '0 0 ' + W + ' ' + H);
+  $('pMN').innerHTML = g
+    + '<path d="' + d1 + '" fill="none" stroke="#1b2430" stroke-width="1.3"/>'
+    + '<path d="' + d2 + '" fill="none" stroke="#1b2430" stroke-width="1.3"/>' + mk
+    + CASES.N.map(c => { let e1 = '', e2 = '';
+        c.rows.forEach((q, i) => { e1 += (i ? 'L' : 'M') + X(q.M).toFixed(1) + ' ' + Y(q.N).toFixed(1) + ' ';
+          e2 += (i ? 'L' : 'M') + X(-q.M).toFixed(1) + ' ' + Y(q.N).toFixed(1) + ' '; });
+        const at = '" fill="none" stroke="' + c.sty[0] + '" stroke-width="1.2" stroke-dasharray="' + c.sty[1] + '"/>';
+        return '<path d="' + e1 + at + '<path d="' + e2 + at; }).join('')
+    + (CASES.N.length ? (() => { const L = [['Current', '#1b2430', '']].concat(CASES.N.map(c => [c.nm, c.sty[0], c.sty[1]]));
+        const bw = 150, bx = W - m.r - bw - 8, by = m.t + 8;
+        return '<rect x="' + bx + '" y="' + by + '" width="' + bw + '" height="' + (L.length * 15 + 8) + '" fill="#fff" fill-opacity="0.9" stroke="#cfd3d8" stroke-width="0.6"/>'
+          + L.map((a, k) => '<line x1="' + (bx + 6) + '" y1="' + (by + 10 + k * 15) + '" x2="' + (bx + 26) + '" y2="' + (by + 10 + k * 15) + '" stroke="' + a[1]
+            + '" stroke-width="1.4" stroke-dasharray="' + a[2] + '"/><text x="' + (bx + 32) + '" y="' + (by + 13 + k * 15) + '" font-size="11" fill="#1b2430" ' + FONT + '>' + a[0] + '</text>').join(''); })() : '');
+  // 材料ごとの N-M
+  const comp = [['Total', 'M', 'N', '#1b2430', '', 1.6],
+                ['Concrete', 'Mc', 'Nc', '#8b939c', '', 1.3]];
+  if (p.some(q => q.Nr || q.Mr)) comp.push(['Rebar', 'Mr', 'Nr', '#55606e', '5 3', 1.3]);
+  if (p.some(q => q.Ns || q.Ms)) comp.push(['Steel', 'Ms', 'Ns', '#1b2430', '5 3', 1.3]);
+  if (p.some(q => q.Nt || q.Mt)) comp.push(['Steel tube', 'Mt', 'Nt', '#1b2430', '1.5 2.5', 1.6]);
+  const allM = [], allN = [];
+  for (const c of comp) for (const q of p){ allM.push(q[c[1]]); allN.push(q[c[2]]); }
+  const [xl2, xh2] = rng([allM, [0]]), [yl2, yh2] = rng([allN, [0]]);
+  const fr = frame(W, 380, m, Math.min(0, xl2), xh2, yl2, yh2, 'Moment (kN\u00b7m)', 'Axial force (kN)');
+  let gg = fr.g, lg = '';
+  for (const c of comp){
+    let d = '';
+    p.forEach((q, i) => { d += (i ? 'L' : 'M') + fr.X(q[c[1]]).toFixed(1) + ' ' + fr.Y(q[c[2]]).toFixed(1) + ' '; });
+    gg += '<path d="' + d + '" fill="none" stroke="' + c[3] + '" stroke-width="' + c[5] + '"'
+      + (c[4] ? ' stroke-dasharray="' + c[4] + '"' : '') + '/>';
+    for (const q of p) gg += '<circle cx="' + fr.X(q[c[1]]).toFixed(1) + '" cy="' + fr.Y(q[c[2]]).toFixed(1)
+      + '" r="2" fill="#fff" stroke="' + c[3] + '" stroke-width="0.9"/>';
+  }
+  const bw = 130, bx = W - m.r - bw - 8, by = m.t + 8;
+  lg = '<rect x="' + bx + '" y="' + by + '" width="' + bw + '" height="' + (comp.length * 15 + 8)
+    + '" fill="#fff" fill-opacity="0.9" stroke="#cfd3d8" stroke-width="0.6"/>';
+  comp.forEach((c, k) => { const yy = by + 13 + k * 15;
+    lg += '<line x1="' + (bx + 6) + '" y1="' + (yy - 3) + '" x2="' + (bx + 26) + '" y2="' + (yy - 3) + '" stroke="' + c[3]
+      + '" stroke-width="' + c[5] + '"' + (c[4] ? ' stroke-dasharray="' + c[4] + '"' : '') + '/><text x="' + (bx + 32)
+      + '" y="' + yy + '" font-size="11" fill="#1b2430" ' + FONT + '>' + c[0] + '</text>'; });
+  $('pMNc').setAttribute('viewBox', '0 0 ' + W + ' 380');
+  $('pMNc').innerHTML = gg + lg;
+  $('outN').classList.remove('hidden');
+  applyFig('N'); drawXY('N');
+}
+
+/* ---------- 解析の種類（断面／部材）の切替 ---------- */
+function isSec(){ return $('kindS').checked; }
+function applyKind(){
+  const s = isSec(), cyc = $('ld').value === 'cyc';
+  const T = (id, hide) => $(id).classList.toggle('hidden', hide);
+  T('subS', !s); T('subB', s);
+  $('regT').classList.toggle('noHy', s); T('memA', s); T('memB', s);
+  T('rtR', !s && cyc);
+  T('runM', !s); T('runN', !s); T('runB', s);
+  T('notesS', !s); T('notesB', s);
+  T('hyBlk', s);
+  T('ldSel', s);
+  const vnOn = !s && $('vn').checked;
+  T('vnP', !vnOn);
+  $('Nlb').textContent = vnOn ? '初期軸力 N0（圧縮正）' : '軸力 N（圧縮正）';
+  $('p5t').textContent = s ? '5. 計算' : '5. 部材と載荷';
+  T('outM', !(s && resM)); T('outN', !(s && resN)); T('outB', !(!s && resB));
+}
+['kindS', 'kindB'].forEach(id => { $(id).onchange = () => { status(''); applyKind(); }; });
+{ const f = $('ld').onchange; $('ld').onchange = () => { f(); $(($('ld').value === 'cyc') ? 'ldCyc' : 'ldMono').checked = true; applyKind(); }; }
+['ldMono', 'ldCyc'].forEach(id => { $(id).onchange = () => { $('ld').value = $('ldCyc').checked ? 'cyc' : 'mono'; $('ld').onchange(); }; });
+$('vn').onchange = applyKind;
+
+/* ---------- 書き出し ---------- */
+function download(name, lines){
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([lines.join('\n')], {type: 'text/csv'}));
+  a.download = name; a.click(); URL.revokeObjectURL(a.href);
+}
+$('dlB').onclick = () => {
+  if (!resB) return;
+  const anti = resB.r.anti;
+  const L = ['Step,Delta_mm,R_rad,DeltaFlex_mm,DeltaShear_mm,DeltaPullout_mm,Q_kN,N_kN,Mbase_kNm,PhiBase_1_per_m,TopStrainBase,BotStrainBase'
+    + (anti ? ',Mtop_kNm,PhiTop_1_per_m' : '')];
+  resB.r.out.forEach((q, i) => L.push([i + 1, q.d, q.d / resB.opt.L, q.db, q.ds, q.dp, q.P / 1e3, q.N / 1e3, q.Mb / 1e6, q.phi[0] * 1000, q.etop, q.ebot]
+    .concat(anti ? [q.Mt / 1e6, q.phi[q.phi.length - 1] * 1000] : [])
+    .map(v => (+v).toPrecision(6)).join(',')));
+  download(anti ? 'antisymmetric_P_delta.csv' : 'cantilever_P_delta.csv', L);
+};
+$('dlM').onclick = () => {
+  if (!resM) return;
+  const L = ['Curvature_1_per_m,M_kNm,Mcover_kNm,Mcore_kNm,Mtube_kNm,Mrebar_kNm,Msteel_kNm,'
+    + 'N_kN,Ncover_kN,Ncore_kN,Ntube_kN,Nrebar_kN,Nsteel_kN,TopStrain,NeutralAxis_mm'];
+  for (const q of resM.r.out) L.push([q.phi * 1000, q.M / 1e6, q.Mv / 1e6, q.Mk / 1e6, q.Mt / 1e6, q.Mr / 1e6, q.Ms / 1e6,
+    q.N / 1e3, q.Nv / 1e3, q.Nk / 1e3, q.Nt / 1e3, q.Nr / 1e3, q.Ns / 1e3, q.etop, q.xn].map(v => (+v).toPrecision(6)).join(','));
+  download('m_phi.csv', L);
+};
+$('dlN').onclick = () => {
+  if (!resN) return;
+  download('m_n.csv', ['N_kN,Mmax_kNm,Nconc_kN,Mconc_kNm,Nrebar_kN,Mrebar_kNm,Nsteel_kN,Msteel_kNm,Ntube_kN,Mtube_kNm']
+    .concat(resN.pts.map(q => [q.N, q.M, q.Nc, q.Mc, q.Nr, q.Mr, q.Ns, q.Ms, q.Nt, q.Mt]
+      .map(v => (+v).toFixed(3)).join(','))));
+};
+
+
+document.querySelectorAll('#inGrid input, #inGrid select').forEach(e => { if (e.closest('#barRows')) return; e.oninput = drawSection; e.onchange = drawSection; });
+$('mode').onchange = drawSection;
+// 旧設定ファイルの共通値を全行へ（コンクリート）
+{ const RK = ['cv', 'tb', 'hp', 'st'], cp = (src, dst) => { RK.forEach(k => { $(dst + k).value = $(src).value; $(dst + k).dispatchEvent(new Event('change')); }); drawSection(); };
+  $('cyr').onchange = () => { if ($('cyr').value === 'mander') $('cyr').value = 'yassin'; cp('cyr', 'cyr_'); };
+  $('ku').onchange = () => cp('ku', 'ku_'); $('ft').onchange = () => cp('ft', 'ft_'); $('ts').onchange = () => cp('ts', 'ts_');
+  $('etu').onchange = () => { RK.forEach(k => { if ($('ts_' + k).value === 'lin') $('tp_' + k).value = $('etu').value; }); drawSection(); };
+  $('tsc').onchange = () => { RK.forEach(k => { if ($('ts_' + k).value === 'om') $('tp_' + k).value = $('tsc').value; }); drawSection(); };
+  // 軟化モデルを切り替えたら係数を既定値に
+  RK.forEach(k => { $('ts_' + k).addEventListener('change', () => { $('tp_' + k).value = $('ts_' + k).value === 'lin' ? '0.001' : '1.0'; drawSection(); }); });
+}
+// 旧設定ファイルの共通 Es・β を全行へ
+$('Es').onchange = () => { ['t', 'r', 'f', 'w'].forEach(k => { $('Es_' + k).value = $('Es').value; }); drawSection(); };
+$('ph').onchange = () => { ['t', 'r', 'f', 'w'].forEach(k => { $('ph_' + k).value = $('ph').value; }); drawSection(); };
+drawSection();
+applyKind();
+
+/* ===================================================================
+   出力の強化：グラフの表示選択，任意のグラフ，表・CSV の項目選択，
+   時点の選択（スライダー），複数ケースの比較
+   =================================================================== */
+// ---------- データの列の定義（CSV と任意のグラフで共通） ----------
+const DS = {
+  M: {file: 'm_phi.csv', rows: () => resM ? resM.r.out : null, cols: [
+    {k: 'phi', h: 'Curvature_1_per_m', l: '曲率 φ (1/m)', ax: 'Curvature (1/m)', f: q => q.phi * 1000},
+    {k: 'M', h: 'M_kNm', l: 'M 合計 (kN·m)', ax: 'Moment (kN·m)', f: q => q.M / 1e6},
+    {k: 'Mv', h: 'Mcover_kNm', l: 'M カバー', ax: 'Moment, cover (kN·m)', f: q => q.Mv / 1e6},
+    {k: 'Mk', h: 'Mcore_kNm', l: 'M コア', ax: 'Moment, core (kN·m)', f: q => q.Mk / 1e6},
+    {k: 'Mt', h: 'Mtube_kNm', l: 'M 鋼管', ax: 'Moment, tube (kN·m)', f: q => q.Mt / 1e6},
+    {k: 'Mr', h: 'Mrebar_kNm', l: 'M 主筋', ax: 'Moment, rebar (kN·m)', f: q => q.Mr / 1e6},
+    {k: 'Ms', h: 'Msteel_kNm', l: 'M 鉄骨', ax: 'Moment, steel (kN·m)', f: q => q.Ms / 1e6},
+    {k: 'N', h: 'N_kN', l: 'N 合計 (kN)', ax: 'Axial force (kN)', f: q => q.N / 1e3},
+    {k: 'Nv', h: 'Ncover_kN', l: 'N カバー', ax: 'Axial force, cover (kN)', f: q => q.Nv / 1e3},
+    {k: 'Nk', h: 'Ncore_kN', l: 'N コア', ax: 'Axial force, core (kN)', f: q => q.Nk / 1e3},
+    {k: 'Nt', h: 'Ntube_kN', l: 'N 鋼管', ax: 'Axial force, tube (kN)', f: q => q.Nt / 1e3},
+    {k: 'Nr', h: 'Nrebar_kN', l: 'N 主筋', ax: 'Axial force, rebar (kN)', f: q => q.Nr / 1e3},
+    {k: 'Ns', h: 'Nsteel_kN', l: 'N 鉄骨', ax: 'Axial force, steel (kN)', f: q => q.Ns / 1e3},
+    {k: 'etop', h: 'TopStrain', l: '圧縮縁ひずみ', ax: 'Top strain (×10⁻³)', f: q => q.etop, fx: v => v * 1000},
+    {k: 'xn', h: 'NeutralAxis_mm', l: '中立軸深さ (mm)', ax: 'Neutral axis depth (mm)', f: q => q.xn}]},
+  N: {file: 'm_n.csv', rows: () => resN ? resN.pts : null, cols: [
+    {k: 'N', h: 'N_kN', l: 'N (kN)', ax: 'Axial force (kN)', f: q => q.N},
+    {k: 'M', h: 'Mmax_kNm', l: 'Mmax (kN·m)', ax: 'Moment (kN·m)', f: q => q.M},
+    {k: 'Nc', h: 'Nconc_kN', l: 'N コンクリート', ax: 'Axial force, concrete (kN)', f: q => q.Nc},
+    {k: 'Mc', h: 'Mconc_kNm', l: 'M コンクリート', ax: 'Moment, concrete (kN·m)', f: q => q.Mc},
+    {k: 'Nr', h: 'Nrebar_kN', l: 'N 主筋', ax: 'Axial force, rebar (kN)', f: q => q.Nr},
+    {k: 'Mr', h: 'Mrebar_kNm', l: 'M 主筋', ax: 'Moment, rebar (kN·m)', f: q => q.Mr},
+    {k: 'Ns', h: 'Nsteel_kN', l: 'N 鉄骨', ax: 'Axial force, steel (kN)', f: q => q.Ns},
+    {k: 'Ms', h: 'Msteel_kNm', l: 'M 鉄骨', ax: 'Moment, steel (kN·m)', f: q => q.Ms},
+    {k: 'Nt', h: 'Ntube_kN', l: 'N 鋼管', ax: 'Axial force, tube (kN)', f: q => q.Nt},
+    {k: 'Mt', h: 'Mtube_kNm', l: 'M 鋼管', ax: 'Moment, tube (kN·m)', f: q => q.Mt}]},
+  B: {file: 'member_Q_delta.csv', rows: () => resB ? resB.r.out : null, cols: [
+    {k: 'step', h: 'Step', l: 'ステップ', ax: 'Step', f: (q, i) => i + 1},
+    {k: 'd', h: 'Delta_mm', l: '変位 δ (mm)', ax: 'Displacement (mm)', f: q => q.d},
+    {k: 'R', h: 'R_rad', l: '部材角 R (rad)', ax: 'Drift angle R (rad)', f: (q, i, c) => q.d / c.L},
+    {k: 'db', h: 'DeltaFlex_mm', l: 'δ 曲げ (mm)', ax: 'Flexural displacement (mm)', f: q => q.db},
+    {k: 'ds', h: 'DeltaShear_mm', l: 'δ せん断 (mm)', ax: 'Shear displacement (mm)', f: q => q.ds},
+    {k: 'dp', h: 'DeltaPullout_mm', l: 'δ 抜け出し (mm)', ax: 'Pull-out displacement (mm)', f: q => q.dp},
+    {k: 'Q', h: 'Q_kN', l: 'せん断力 Q (kN)', ax: 'Shear force Q (kN)', f: q => q.P / 1e3},
+    {k: 'N', h: 'N_kN', l: '軸力 N (kN)', ax: 'Axial force N (kN)', f: q => q.N / 1e3},
+    {k: 'Mb', h: 'Mbase_kNm', l: 'M 下端 (kN·m)', ax: 'Moment at base (kN·m)', f: q => q.Mb / 1e6},
+    {k: 'Mt', h: 'Mtop_kNm', l: 'M 上端 (kN·m)', ax: 'Moment at top (kN·m)', f: q => q.Mt === undefined ? NaN : q.Mt / 1e6},
+    {k: 'pb', h: 'PhiBase_1_per_m', l: 'φ 下端 (1/m)', ax: 'Curvature at base (1/m)', f: q => q.phi[0] * 1000},
+    {k: 'pt', h: 'PhiTop_1_per_m', l: 'φ 上端 (1/m)', ax: 'Curvature at top (1/m)', f: (q, i, c) => c.anti ? q.phi[q.phi.length - 1] * 1000 : NaN},
+    {k: 'et', h: 'TopStrainBase', l: '下端断面 上縁ひずみ', ax: 'Top strain at base (×10⁻³)', f: q => q.etop, fx: v => v * 1000},
+    {k: 'eb', h: 'BotStrainBase', l: '下端断面 下縁ひずみ', ax: 'Bottom strain at base (×10⁻³)', f: q => q.ebot, fx: v => v * 1000}]}
+};
+const ctxOf = key => key === 'B' && resB ? {L: resB.opt.L, anti: !!resB.r.anti} : {L: 1, anti: false};
+const colVal = (key, c, q, i, ctx) => { const v = c.f(q, i, ctx); return c.fx ? c.fx(v) : v; };   // グラフ用（ひずみは ×10⁻³）
+
+// ---------- 表示するグラフ・表の項目 ----------
+const FIG = {
+  M: [['pM', 'M-φ 関係'], ['cmp', 'M・N の内訳'], ['tbl', '最大耐力時の内訳（表）'], ['step', '時点の選択'], ['xy', '任意のグラフ']],
+  N: [['pMN', 'M-N 相互作用図'], ['pMNc', '材料ごとの N-M'], ['xy', '任意のグラフ']],
+  B: [['pd', 'Q-δ 関係'], ['nq', '軸力の推移（変動軸力）'], ['tbl', '結果の表'], ['dist', '曲率・M の分布'], ['hist', '応力-ひずみ履歴'], ['step', '時点の選択'], ['xy', '任意のグラフ']]};
+const TBL = {
+  M: [['cv', 'コンクリート（カバー）'], ['co', 'コンクリート（コア）'], ['tb', '鋼管'], ['r', '主筋'], ['s', '鉄骨'], ['tot', '合計'], ['info', 'φ・縁ひずみ・中立軸']],
+  B: [['vn', '軸力（変動軸力）'], ['qmax', '最大耐力'], ['dmax', '最大耐力時の変位'], ['ga', 'せん断剛性'], ['endm', '端部モーメント（逆対称）'], ['seg', '区間の長さ']]};
+const PANEL = {M: 'outM', N: 'outN', B: 'outB'};
+function buildBar(key){
+  const bar = $('bar' + key); if (!bar) return;
+  const cb = (id, lab, on) => '<label class="chk ob"><input type="checkbox" id="' + id + '"' + (on ? ' checked' : '') + '> ' + lab + '</label>';
+  let h = '<div class="obRow"><span class="obT">グラフ</span>' + FIG[key].map(a => cb('fg' + key + '_' + a[0], a[1], true)).join('') + '</div>';
+  if (TBL[key]) h += '<details class="obD"><summary>表の項目</summary>' + TBL[key].map(a => cb('tb' + key + '_' + a[0], a[1], true)).join('') + '</details>';
+  h += '<details class="obD"><summary>CSV の列</summary>' + DS[key].cols.map(c => cb('cv' + key + '_' + c.k, c.l, true)).join('')
+    + '<button type="button" class="sm" id="cvAll' + key + '">すべて</button> <button type="button" class="sm" id="cvNone' + key + '">なし</button></details>';
+  bar.innerHTML = h;
+  bar.querySelectorAll('input[id^="fg"]').forEach(e => e.onchange = () => applyFig(key));
+  bar.querySelectorAll('input[id^="tb"]').forEach(e => e.onchange = () => applyTbl(key));
+  $('cvAll' + key).onclick = () => DS[key].cols.forEach(c => { $('cv' + key + '_' + c.k).checked = true; });
+  $('cvNone' + key).onclick = () => DS[key].cols.forEach(c => { $('cv' + key + '_' + c.k).checked = false; });
+}
+function applyFig(key){
+  const pn = $(PANEL[key]);
+  FIG[key].forEach(a => { const on = $('fg' + key + '_' + a[0]).checked;
+    pn.querySelectorAll('.fg[data-k="' + a[0] + '"]').forEach(e => e.classList.toggle('fgOff', !on)); });
+}
+function applyTbl(key){
+  if (!TBL[key]) return;
+  const t = $(key === 'M' ? 'tbl' : 'tblB');
+  TBL[key].forEach(a => { const on = $('tb' + key + '_' + a[0]).checked;
+    t.querySelectorAll('[data-k="' + a[0] + '"]').forEach(e => e.classList.toggle('hidden', !on)); });
+}
+
+// ---------- CSV（選んだ列だけ） ----------
+function csvOut(key){
+  const rows = DS[key].rows(); if (!rows) return;
+  const ctx = ctxOf(key), cols = DS[key].cols.filter(c => $('cv' + key + '_' + c.k).checked
+    && rows.some((q, i) => isFinite(c.f(q, i, ctx))));          // 値のない列（片持ちの上端など）は出さない
+  if (!cols.length) return status('CSV の列が選ばれていません。', true);
+  const L = [cols.map(c => c.h).join(',')];
+  rows.forEach((q, i) => L.push(cols.map(c => { const v = c.f(q, i, ctx); return isFinite(v) ? (+v).toPrecision(6) : ''; }).join(',')));
+  const nm = key === 'B' && resB ? (resB.r.anti ? 'antisymmetric_Q_delta.csv' : 'cantilever_Q_delta.csv') : DS[key].file;
+  download(nm, L);
+}
+$('dlM').onclick = () => csvOut('M'); $('dlN').onclick = () => csvOut('N'); $('dlB').onclick = () => csvOut('B');
+
+// ---------- 複数ケースの比較 ----------
+const CASES = {M: [], N: [], B: []};
+const CSTY = [['#8b939c', '5 3'], ['#55606e', '2 2'], ['#b3b9bf', '6 2 1 2'], ['#6b737c', '1.5 2.5'], ['#9aa1a8', '8 3'], ['#3d4652', '1 3']];
+const caseNo = {M: 0, N: 0, B: 0};
+function keepCase(key){
+  const rows = DS[key].rows(); if (!rows) return;
+  caseNo[key]++;
+  const nm = 'Case ' + caseNo[key];
+  CASES[key].push({nm, rows: rows.slice(), ctx: ctxOf(key), sty: CSTY[(CASES[key].length) % CSTY.length]});
+  listCases(key); redraw(key);
+}
+function listCases(key){
+  const box = $('cs' + key); if (!box) return;
+  box.innerHTML = CASES[key].map((c, i) => '<span class="case"><span class="sw" style="border-top:2px ' + (c.sty[1] ? 'dashed' : 'solid') + ' ' + c.sty[0] + '"></span>'
+    + '<input type="text" value="' + c.nm.replace(/"/g, '&quot;') + '" data-i="' + i + '" aria-label="ケース名">'
+    + '<button type="button" class="sm" data-d="' + i + '" aria-label="削除">×</button></span>').join('')
+    + (CASES[key].length ? ' <button type="button" class="sm" id="csClr' + key + '">すべて削除</button>' : '');
+  box.querySelectorAll('input[data-i]').forEach(e => e.onchange = () => { CASES[key][+e.dataset.i].nm = e.value; redraw(key); });
+  box.querySelectorAll('button[data-d]').forEach(e => e.onclick = () => { CASES[key].splice(+e.dataset.d, 1); listCases(key); redraw(key); });
+  if ($('csClr' + key)) $('csClr' + key).onclick = () => { CASES[key] = []; listCases(key); redraw(key); };
+}
+function redraw(key){ try { ({M: showM, N: showN, B: showB})[key](); } catch (e){} }
+// ケースの系列（主グラフ用）
+function caseSeries(key, xf, yf){
+  return CASES[key].map(c => ({x: c.rows.map((q, i) => xf(q, i, c.ctx)), y: c.rows.map((q, i) => yf(q, i, c.ctx)),
+    c: c.sty[0], dash: c.sty[1], name: c.nm, w: 1.1}));
+}
+
+// ---------- 任意のグラフ ----------
+function buildXY(key){
+  const sx = $('xyX' + key), sy = $('xyY' + key); if (!sx) return;
+  const op = DS[key].cols.map(c => '<option value="' + c.k + '">' + c.l + '</option>').join('');
+  sx.innerHTML = op; sy.innerHTML = op;
+  sx.value = ({M: 'phi', N: 'M', B: 'd'})[key]; sy.value = ({M: 'xn', N: 'N', B: 'Mb'})[key];
+  sx.onchange = sy.onchange = () => drawXY(key);
+}
+function drawXY(key){
+  const rows = DS[key].rows(), sv = $('pXY' + key); if (!rows || !sv) return;
+  const cx = DS[key].cols.find(c => c.k === $('xyX' + key).value), cy = DS[key].cols.find(c => c.k === $('xyY' + key).value);
+  const ctx = ctxOf(key);
+  const ser = [{x: rows.map((q, i) => colVal(key, cx, q, i, ctx)), y: rows.map((q, i) => colVal(key, cy, q, i, ctx)), c: '#1b2430', name: 'Current', w: 1.3}]
+    .concat(CASES[key].map(c => ({x: c.rows.map((q, i) => colVal(key, cx, q, i, c.ctx)), y: c.rows.map((q, i) => colVal(key, cy, q, i, c.ctx)),
+      c: c.sty[0], dash: c.sty[1], name: c.nm, w: 1.1})));
+  plotMulti(sv, ser, cx.ax, cy.ax, 300, CASES[key].length > 0, true);
+}
+
+// ---------- 時点の選択（断面内のひずみ・応力分布） ----------
+function distPlots(pre, S, F, e0, phi, sf){
+  // pre：'M' または 'B'。sf があれば各繊維の応力（履歴を含む），なければ単調の応力
+  const Hh = y => S.D - y;                                  // 下端からの高さ
+  const eT = e0 + phi * F.yc, eB = e0 - phi * (S.D - F.yc);
+  plotMulti($('d' + pre + 'e'), [{x: [eT * 1000, eB * 1000], y: [S.D, 0], c: '#1b2430', name: 'Strain', w: 1.4}],
+    'Strain (×10⁻³)', 'Height (mm)', 260, false, true, 300);
+  const st = i => sf ? sf[i] : F.fib[i].sig(e0 + phi * (F.yc - F.fib[i].y));
+  const RN = {cv: ['Cover', '#8b939c', '5 3'], tb: ['Tube core', '#1b2430', ''], hp: ['Hoop core', '#55606e', '2 2'], st: ['Steel core', '#1b2430', '6 2 1 2']};
+  const cs = [];
+  for (const k of ['tb', 'hp', 'st', 'cv']){
+    const idx = F.fib.map((f, i) => i).filter(i => F.fib[i].rg === k).sort((a, b) => F.fib[b].y - F.fib[a].y);
+    if (idx.length) cs.push({x: idx.map(st), y: idx.map(i => Hh(F.fib[i].y)), c: RN[k][1], dash: RN[k][2], name: RN[k][0], w: 1.2});
+  }
+  plotMulti($('d' + pre + 'c'), cs, 'Concrete stress (N/mm²)', 'Height (mm)', 260, cs.length > 1, true, 300);
+  const SG = {r: ['Rebar', '#1b2430'], s: ['Steel', '#55606e'], t: ['Tube', '#8b939c']};
+  const ss = [];
+  for (const g of ['r', 's', 't']){
+    const idx = F.fib.map((f, i) => i).filter(i => F.fib[i].g === g);
+    if (idx.length) ss.push({x: idx.map(st), y: idx.map(i => Hh(F.fib[i].y)), c: SG[g][1], name: SG[g][0], noLine: true, mk: true});
+  }
+  plotMulti($('d' + pre + 's'), ss, 'Steel stress (N/mm²)', 'Height (mm)', 260, ss.length > 1, true, 300);
+}
+function stepSetup(key, n){
+  const r = $('st' + key); if (!r) return 0;
+  const old = +r.value, oldMax = +r.max;
+  r.max = Math.max(n - 1, 0);
+  if (!(old >= 0 && old <= n - 1) || oldMax !== n - 1) r.value = key === 'M' ? resM.r.iMax : resB.r.iMax;
+  return +r.value;
+}
+let _raf = 0;
+function onStep(key){ cancelAnimationFrame(_raf); _raf = requestAnimationFrame(() => redraw(key)); }
+function stepM(){
+  const {S, r, F} = resM, o = r.out, i = stepSetup('M', o.length), q = o[i];
+  $('stMinfo').textContent = 'ステップ ' + (i + 1) + ' / ' + o.length + '：φ = ' + (q.phi * 1000).toFixed(4) + ' 1/m，M = ' + (q.M / 1e6).toFixed(1)
+    + ' kN·m，圧縮縁ひずみ ' + (q.etop * 1000).toFixed(2) + '×10⁻³，中立軸深さ ' + q.xn.toFixed(1) + ' mm';
+  distPlots('M', S, F, q.etop - q.phi * F.yc, q.phi, null);
+  return i;
+}
+function stepB(){
+  const {S, r, F, opt} = resB, o = r.out, i = stepSetup('B', o.length), q = o[i];
+  $('stBinfo').textContent = 'ステップ ' + (i + 1) + ' / ' + o.length + '：δ = ' + q.d.toFixed(2) + ' mm（R = ' + (q.d / opt.L).toFixed(4) + '），Q = '
+    + (q.P / 1e3).toFixed(1) + ' kN，N = ' + (q.N / 1e3).toFixed(1) + ' kN，下端の M = ' + (q.Mb / 1e6).toFixed(1) + ' kN·m';
+  if (q.sf) distPlots('B', S, F, q.e0b, q.phb, q.sf);
+  return i;
+}
+
+// ---------- 初期化 ----------
+['M', 'N', 'B'].forEach(k => { buildBar(k); buildXY(k); listCases(k);
+  if ($('keep' + k)) $('keep' + k).onclick = () => keepCase(k);
+  if ($('st' + k)) $('st' + k).oninput = () => onStep(k); });
+</script>
+<footer id="credit" style="max-width:1200px;margin:0 auto;padding:12px 20px 40px;box-sizing:border-box;font-size:12px;line-height:1.7;color:#55606e;border-top:1px solid #cfd3d8">
+Author: Suguru SUZUKI<br>
+Created: September 24, 2026<br>
+Last updated: September 24, 2026<br>
+This tool is provided as is. Use at your own risk.<br>
+All calculations are done in your browser. No data is uploaded.<br>
+Contact: <a href="https://sites.google.com/view/kut-suzuki/home" target="_blank" rel="noopener" style="color:#55606e">https://sites.google.com/view/kut-suzuki/home</a>
+</footer>
+
+<script>
+/* ===== 設定の保存・読込（開く／上書き保存／名前を付けて保存） ===== */
+(function(){
+  const APP = 'LANCE', EXT = '.lnc', DYN = [{rows:"barRows", add:"addBar"}, {rows:"ampRows", add:"addAmp"}];
+  const PICK = typeof window.showSaveFilePicker === 'function' && location.protocol !== 'file:';
+  const TYPES = [{description: APP + ' の設定ファイル', accept: {'application/json': [EXT]}}];
+  const OPEN_TYPES = [{description: APP + '・SLICE・SHAFT の設定ファイル', accept: {'application/json': [EXT, '.slc', '.shft']}}];
+  const OLD = {SLICE: 'kindS', SHAFT: 'kindB'};   // 旧アプリの設定 → 解析の種類
+  let handle = null, curName = '';
+  const fields = () => [...document.querySelectorAll('input, select, textarea')].filter(e => e.type !== 'file' && !e.closest('#outArea'));   // 出力欄は保存しない
+  function snapshot(){
+    const v = {};
+    fields().forEach((e, i) => { v[e.id ? e.id : '#' + i] = (e.type === 'checkbox' || e.type === 'radio') ? !!e.checked : e.value; });
+    const dyn = {};
+    DYN.forEach(o => { const c = document.getElementById(o.rows); if (c) dyn[o.rows] = c.querySelectorAll('tr').length; });
+    return {app: APP, version: 1, saved: new Date().toISOString(), dyn, values: v};
+  }
+  function fire(e){ e.dispatchEvent(new Event('input', {bubbles: true})); e.dispatchEvent(new Event('change', {bubbles: true})); }
+  function restore(j){
+    if (!j || (j.app !== APP && !OLD[j.app])) throw new Error('このファイルは ' + (j && j.app ? j.app : '別のアプリ') + ' の設定です');
+    if (OLD[j.app]){ const k = document.getElementById(OLD[j.app]); if (!k.checked){ k.checked = true; fire(k); } }
+    DYN.forEach(o => {
+      const c = document.getElementById(o.rows), add = document.getElementById(o.add);
+      if (!c || !add) return;
+      const want = (j.dyn || {})[o.rows];
+      if (!want) return;
+      let guard = 0;
+      while (c.querySelectorAll('tr').length < want && guard++ < 200) add.click();
+      while (c.querySelectorAll('tr').length > want && guard++ < 200){
+        const rows = c.querySelectorAll('tr'), last = rows[rows.length - 1];
+        const del = last && last.querySelector('button');
+        if (!del) break;
+        del.click();
+      }
+    });
+    const fs = fields();
+    if (OLD[j.app]){
+      // 旧アプリでは ID のない入力（主筋・振幅の表）を全体の通し番号で保存しているため，ID のない入力の順に振り直す
+      const src = Object.keys(j.values).filter(k => k[0] === '#').sort((a, b) => a.slice(1) - b.slice(1));
+      const dst = []; fs.forEach((e, i) => { if (!e.id) dst.push('#' + i); });
+      const v = {};
+      Object.keys(j.values).forEach(k => { if (k[0] !== '#') v[k] = j.values[k]; });
+      src.forEach((k, n) => { if (n < dst.length) v[dst[n]] = j.values[k]; });
+      j = Object.assign({}, j, {values: v});
+    }
+    fs.forEach((e, i) => {
+      const k = e.id ? e.id : '#' + i;
+      if (!(k in j.values)) return;
+      const val = j.values[k];
+      if (e.type === 'checkbox' || e.type === 'radio'){ if (e.checked !== !!val){ e.checked = !!val; fire(e); } }
+      else if (e.value !== val){ e.value = val; fire(e); }
+    });
+    return fs.length;
+  }
+  function msg(t, err){
+    const b = document.getElementById('cfgMsg');
+    if (b){ b.textContent = t; b.style.fontWeight = err ? '600' : '400'; }
+  }
+  function setName(n){ curName = n || ''; const b = document.getElementById('cfgName'); if (b) b.textContent = curName; }
+  const text = () => JSON.stringify(snapshot(), null, 1);
+  function download(name){
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([text()], {type: 'application/json'}));
+    a.download = name; document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+  }
+  async function writeHandle(){
+    const w = await handle.createWritable();
+    await w.write(text()); await w.close();
+    setName(handle.name); msg('上書き保存しました。');
+  }
+  async function saveAs(){
+    const suggested = curName || APP.toLowerCase() + '_settings' + EXT;
+    if (!PICK){ download(suggested); msg('このブラウザでは上書き保存ができないため，ダウンロードしました。'); return; }
+    try {
+      handle = await window.showSaveFilePicker({suggestedName: suggested, types: TYPES});
+      await writeHandle(); msg('保存しました。');
+    } catch (e){ if (e.name !== 'AbortError') msg('保存できません：' + e.message, true); }
+  }
+  async function save(){
+    if (!handle) return saveAs();
+    try { await writeHandle(); } catch (e){ if (e.name !== 'AbortError') msg('保存できません：' + e.message, true); }
+  }
+  async function open(){
+    if (!PICK){ document.getElementById('cfgFile').click(); return; }
+    try {
+      const [h] = await window.showOpenFilePicker({types: OPEN_TYPES, multiple: false});
+      const f = await h.getFile();
+      const j = JSON.parse(await f.text()), n = restore(j);
+      loaded(j, f.name, n, h);
+    } catch (e){ if (e.name !== 'AbortError') msg('読み込めません：' + e.message, true); }
+  }
+  // 旧アプリ（SLICE・SHAFT）の設定は元のファイルに上書きしないよう，保存先を .lnc の新規ファイルにする
+  function loaded(j, name, n, h){
+    if (OLD[j.app]){
+      handle = null; setName(name.replace(/\.[^.]+$/, '') + EXT);
+      msg(j.app + ' の設定を読み込みました（' + n + ' 項目）。保存すると ' + EXT + ' の新しいファイルになります。');
+    } else {
+      handle = h; setName(name);
+      msg('読み込みました（' + n + ' 項目）。データのCSVは含まれません。');
+    }
+  }
+  document.getElementById('cfgOpen').onclick = open;
+  document.getElementById('cfgSave').onclick = save;
+  document.getElementById('cfgSaveAs').onclick = saveAs;
+  document.getElementById('cfgFile').onchange = async e => {
+    const f = e.target.files[0]; e.target.value = '';
+    if (!f) return;
+    try { const j = JSON.parse(await f.text()), n = restore(j); loaded(j, f.name, n, null); }
+    catch (err){ msg('読み込めません：' + err.message, true); }
+  };
+})();
+</script>
+
+<script>
+/* ===== 図の保存と文字の大きさ ===== */
+(function(){
+  const APP = 'LANCE', FIGS = [{id:"sec",key:"section"},{id:"mat",key:"material"},{id:"hyC",key:"concrete-model"},{id:"hyS",key:"steel-model"},{id:"pPd",key:"load-disp"},{id:"pNd",key:"axial-disp"},{id:"pNQ",key:"axial-shear"},{id:"pPhi",key:"curvature"},{id:"pMd",key:"moment"},{id:"hC",key:"concrete-hysteresis"},{id:"hS",key:"steel-hysteresis"},{id:"pM",key:"m-phi"},{id:"pMc",key:"m-components"},{id:"pNc",key:"n-components"},{id:"pMN",key:"m-n"},{id:"pMNc",key:"m-n-components"},{id:"dMe",key:"strain-dist"},{id:"dMc",key:"concrete-stress-dist"},{id:"dMs",key:"steel-stress-dist"},{id:"dBe",key:"base-strain-dist"},{id:"dBc",key:"base-concrete-stress-dist"},{id:"dBs",key:"base-steel-stress-dist"},{id:"pXYM",key:"custom-m-phi"},{id:"pXYN",key:"custom-m-n"},{id:"pXYB",key:"custom-member"}];
+  let FS = 1;
+  const REDRAW = ['showB','showM','showN','drawSection','applyKind'];
+  function scaleText(svg){
+    svg.querySelectorAll('text').forEach(t => {
+      if (!t.dataset.fs0){
+        const a = t.getAttribute('font-size');
+        t.dataset.fs0 = parseFloat(a || window.getComputedStyle(t).fontSize) || 13;
+      }
+      t.setAttribute('font-size', (parseFloat(t.dataset.fs0) * FS).toFixed(2));
+    });
+  }
+  function fitWidth(svg){
+    const vb = (svg.getAttribute('viewBox') || '').split(/\s+/).map(Number);
+    if (!(vb.length === 4 && vb[2] > 0)) return;
+    if (!svg.dataset.w0) svg.dataset.w0 = vb[2];
+    const w0 = parseFloat(svg.dataset.w0);
+    svg.style.width = Math.min(100, 100 * vb[2] / w0).toFixed(2) + '%';
+  }
+  function applyAll(){ FIGS.forEach(f => { const e = document.getElementById(f.id); if (e && e.tagName.toLowerCase() === 'svg'){ scaleText(e); fitWidth(e); } }); }
+  function svgSource(svg){
+    const c = svg.cloneNode(true);
+    c.querySelectorAll('title').forEach(e => e.remove());
+    let vb = c.getAttribute('viewBox');
+    if (!vb){ vb = '0 0 ' + (svg.clientWidth || 800) + ' ' + (svg.clientHeight || 400); c.setAttribute('viewBox', vb); }
+    const v = vb.split(/\s+/).map(Number);
+    c.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+    c.setAttribute('width', v[2]); c.setAttribute('height', v[3]);
+    c.removeAttribute('style'); c.removeAttribute('class');
+    c.insertAdjacentHTML('afterbegin', '<rect x="' + v[0] + '" y="' + v[1] + '" width="' + v[2] + '" height="' + v[3] + '" fill="#fff"/>');
+    return {src: new XMLSerializer().serializeToString(c), w: v[2], h: v[3]};
+  }
+  function save(blob, name){
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob); a.download = name;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+  }
+  function fname(f, ext){ return APP.toLowerCase() + '_' + f.key + '.' + ext; }
+  function saveSVG(f){ save(new Blob([svgSource(document.getElementById(f.id)).src], {type: 'image/svg+xml'}), fname(f, 'svg')); }
+  function savePNG(f){
+    const el = document.getElementById(f.id), k = 3;
+    if (el.tagName.toLowerCase() === 'canvas'){ el.toBlob(b => save(b, fname(f, 'png')), 'image/png'); return; }
+    const o = svgSource(el), img = new Image();
+    img.onload = () => {
+      const cv = document.createElement('canvas');
+      cv.width = o.w * k; cv.height = o.h * k;
+      const cx = cv.getContext('2d');
+      cx.fillStyle = '#fff'; cx.fillRect(0, 0, cv.width, cv.height);
+      cx.drawImage(img, 0, 0, cv.width, cv.height);
+      cv.toBlob(b => save(b, fname(f, 'png')), 'image/png');
+    };
+    img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(o.src);
+  }
+  function btn(t, fn){
+    const b = document.createElement('button');
+    b.type = 'button'; b.textContent = t; b.className = 'cfgBtn';
+    b.style.cssText = 'font:inherit;font-size:11.5px;padding:2px 8px;margin-left:6px;border:1px solid #cfd3d8;background:#fff;color:#1b2430;cursor:pointer;border-radius:0';
+    b.onclick = fn; return b;
+  }
+  let hasSvg = false;
+  FIGS.forEach(f => {
+    const el = document.getElementById(f.id);
+    if (!el) return;
+    const isSvg = el.tagName.toLowerCase() === 'svg';
+    const bar = document.createElement('div');
+    bar.style.cssText = 'display:flex;justify-content:flex-end;align-items:center;margin:2px 0 10px';
+    bar.appendChild(btn('PNG', () => savePNG(f)));
+    if (isSvg) bar.appendChild(btn('SVG', () => saveSVG(f)));
+    el.insertAdjacentElement('afterend', bar);
+    if (isSvg){
+      hasSvg = true;
+      scaleText(el);
+      fitWidth(el);
+      new MutationObserver(() => { scaleText(el); fitWidth(el); }).observe(el, {childList: true, subtree: true});
+    }
+  });
+  const cfg = document.getElementById('cfgBar');
+  if (cfg && hasSvg){
+    const wrap = document.createElement('span');
+    wrap.style.cssText = 'display:inline-flex;align-items:center;gap:6px;margin-left:10px';
+    wrap.innerHTML = '<span>図の文字</span>';
+    const sel = document.createElement('select');
+    sel.style.cssText = 'font:inherit;font-size:12.5px;padding:2px 6px;border:1px solid #cfd3d8;background:#fff;color:#1b2430;border-radius:0';
+    sel.innerHTML = '<option value="0.85">小</option><option value="1" selected>中</option><option value="1.2">大</option>';
+    sel.onchange = () => { FS = +sel.value || 1; applyAll(); };
+    wrap.appendChild(sel);
+    const ar = document.createElement('select');
+    ar.style.cssText = sel.style.cssText;
+    ar.innerHTML = '<option value="0">標準</option><option value="1.7778">16:9</option><option value="1.5">3:2</option><option value="1.3333">4:3</option><option value="1">1:1</option>';
+    ar.onchange = () => { window.__figAR = +ar.value || 0; REDRAW.forEach(n => { try { if (typeof window[n] === 'function') window[n](); } catch (e){} }); setTimeout(applyAll, 0); };
+    const lb = document.createElement('span'); lb.textContent = '図の縦横比';
+    wrap.appendChild(lb); wrap.appendChild(ar);
+    cfg.appendChild(wrap);
+  }
+})();
+</script>
+</body>
+</html>

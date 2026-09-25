@@ -1,0 +1,1973 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;600&display=swap" rel="stylesheet">
+<title>PRISM｜加速度波形の解析</title>
+<style>
+:root{
+  --ink:#1b2430; --ink-2:#55606e; --paper:#ffffff; --panel:#ffffff;
+  --rule:#cfd3d8; --accent:#1b2430; --accent-soft:#eceef0; --warn:#1b2430;
+  box-sizing:border-box;
+}
+*,*::before,*::after{box-sizing:inherit}
+body{margin:0;background:var(--paper);color:var(--ink);
+  font-family:"Noto Sans JP","Hiragino Kaku Gothic ProN",Meiryo,sans-serif;
+  font-size:15px;line-height:1.65}
+.wrap{max-width:1180px;margin:0 auto;padding:24px 20px 60px}
+h1{font-size:21px;font-weight:600;margin:0 0 2px}
+.sub{color:var(--ink-2);margin:0 0 18px;font-size:14px}
+.cols{display:grid;grid-template-columns:360px minmax(0,1fr);gap:20px;align-items:start}
+@media (max-width:820px){.cols{grid-template-columns:1fr}}
+.panel{border:1px solid var(--rule);padding:16px 18px;margin-bottom:14px;background:var(--panel)}
+.panel h2{font-size:14px;font-weight:600;margin:0 0 12px;padding-bottom:6px;border-bottom:1px solid var(--rule)}
+.modes{display:flex;flex-direction:column;gap:8px}
+.mode{text-align:left;background:#fff;border:1px solid var(--rule);padding:10px 12px;cursor:pointer;font:inherit;color:inherit}
+.mode:hover{border-color:var(--accent)}
+.mode[aria-pressed="true"]{border-color:var(--accent);background:var(--accent-soft);box-shadow:inset 3px 0 0 var(--accent)}
+.mode b{display:block;font-weight:600;font-size:14px}
+.mode span{display:block;color:var(--ink-2);font-size:12.5px;line-height:1.45;margin-top:1px}
+.drop{border:1px dashed var(--rule);background:#fafafa;padding:18px 12px;text-align:center;color:var(--ink-2);cursor:pointer;font-size:14px}
+.drop.over{border-color:var(--accent);background:var(--accent-soft);color:var(--ink)}
+.drop input{display:none}
+.row{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:8px}
+label{font-size:14px}
+.unit{color:var(--ink-2);font-size:13px}
+input[type=number]{width:100px;padding:5px 7px;border:1px solid var(--rule);background:#fff;font:inherit;color:inherit}
+input[type=number]:focus,button:focus-visible,.drop:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.chs{display:flex;flex-wrap:wrap;gap:6px}
+.ch{display:inline-flex;align-items:center;gap:5px;border:1px solid var(--rule);padding:3px 9px;font-size:13.5px;cursor:pointer;background:#fff}
+.ch input{accent-color:var(--accent)}
+.stepH{font-size:12.5px;font-weight:600;color:var(--ink);margin:14px 0 6px;padding-top:8px;border-top:1px dashed var(--rule)}
+.stepH:first-of-type{margin-top:4px;border-top:none;padding-top:0}
+button.run,button.dl{background:var(--accent);color:#fff;border:none;padding:9px 20px;font:inherit;font-weight:600;cursor:pointer}
+button.dl{background:#fff;color:var(--accent);border:1px solid var(--accent);font-weight:400;padding:6px 14px}
+button:disabled{opacity:.4;cursor:not-allowed}
+.status{font-size:13px;color:var(--ink-2);margin-top:8px;min-height:1.3em}
+.status.err{color:var(--warn);font-weight:600}
+#plot{width:100%;display:block}
+#peaks{width:100%;border-collapse:collapse;font-size:13.5px;margin-top:10px}
+#peaks th,#peaks td{border-bottom:1px solid var(--rule);padding:5px 8px;text-align:right}
+#peaks th:first-child,#peaks td:first-child{text-align:left}
+#peaks th{font-weight:600;color:var(--ink-2)}
+.hidden{display:none}
+.legend{display:flex;gap:12px;flex-wrap:wrap;font-size:13px;color:var(--ink-2);margin-top:6px}
+.legend i{display:inline-block;width:14px;height:2px;vertical-align:middle;margin-right:5px}
+ul.notes{margin:6px 0 0;padding-left:1.2em;font-size:12.5px;color:var(--ink-2)}
+ul.notes li{margin-bottom:1px}
+.empty{color:var(--ink-2);font-size:14px;padding:40px 0;text-align:center}
+
+/* アプリ名の見出し */
+.appid{display:flex;align-items:baseline;gap:14px;flex-wrap:wrap;margin:0 0 1px;font-weight:400}
+.appid .nm{font-family:Arial,Helvetica,sans-serif;font-weight:700;font-style:italic;font-size:30px;letter-spacing:.06em;line-height:1.15}
+.appid .jp{font-size:16px;font-weight:600;letter-spacing:.02em}
+.apphd{border-left:5px solid #1b2430;padding-left:14px;margin:0 0 16px}
+.appfull{font-family:Arial,Helvetica,sans-serif;font-style:italic;font-size:11.5px;letter-spacing:.08em;
+  color:#55606e;margin:3px 0 0;padding-bottom:10px;border-bottom:1px solid #cfd3d8}
+.appfull b{font-weight:700;color:#1b2430}
+
+.cfgBtn{font:inherit;font-size:12.5px;padding:3px 10px;border:1px solid #cfd3d8;background:#fff;color:#1b2430;cursor:pointer}
+.cfgBtn:hover{border-color:#1b2430}
+#cfgName{font-family:Arial,Helvetica,sans-serif;color:#1b2430}
+</style>
+</head>
+<body>
+<script>
+/* ===== デジタルフィルタ（Butterworth / Chebyshev I / Bessel，LP・HP・BP） ===== */
+(function(root){
+'use strict';
+// 複素数
+const cx = (re, im) => ({re, im: im || 0});
+const cadd = (a, b) => cx(a.re + b.re, a.im + b.im);
+const csub = (a, b) => cx(a.re - b.re, a.im - b.im);
+const cmul = (a, b) => cx(a.re * b.re - a.im * b.im, a.re * b.im + a.im * b.re);
+const cdiv = (a, b) => { const d = b.re * b.re + b.im * b.im; return cx((a.re * b.re + a.im * b.im) / d, (a.im * b.re - a.re * b.im) / d); };
+const cabs = a => Math.hypot(a.re, a.im);
+const csqrt = a => { const r = cabs(a), t = Math.atan2(a.im, a.re) / 2, m = Math.sqrt(r); return cx(m * Math.cos(t), m * Math.sin(t)); };
+
+// --- アナログ原型（遮断 1 rad/s）の極
+function protoPoles(type, n, rippleDb){
+  const p = [];
+  if (type === 'cheby1'){
+    const eps = Math.sqrt(Math.pow(10, rippleDb / 10) - 1);
+    const a = Math.asinh(1 / eps) / n;
+    for (let k = 0; k < n; k++){
+      const th = Math.PI * (2 * k + 1) / (2 * n);
+      p.push(cx(-Math.sinh(a) * Math.sin(th), Math.cosh(a) * Math.cos(th)));
+    }
+    return p;
+  }
+  if (type === 'bessel'){
+    // 逆Bessel多項式 θn の係数（漸化式）→ 根を Durand-Kerner で求める
+    let a0 = [1], a1 = [1, 1];                      // θ0 = 1, θ1 = s + 1（昇べき）
+    for (let k = 2; k <= n; k++){
+      const t = new Array(k + 1).fill(0);
+      for (let i = 0; i < a1.length; i++) t[i] += (2 * k - 1) * a1[i];
+      for (let i = 0; i < a0.length; i++) t[i + 2] += a0[i];
+      a0 = a1; a1 = t;
+    }
+    const roots = polyRoots(a1);
+    // -3 dB が 1 rad/s になるよう周波数を規格化
+    const H = w => {
+      let num = cx(1, 0), den = cx(1, 0);
+      roots.forEach(r => { den = cmul(den, csub(cx(0, w), r)); num = cmul(num, cx(-r.re, -r.im)); });
+      return cabs(cdiv(num, den));
+    };
+    let lo = 0.01, hi = 100;
+    for (let i = 0; i < 200; i++){ const mid = Math.sqrt(lo * hi); if (H(mid) > Math.SQRT1_2) lo = mid; else hi = mid; }
+    const wc = Math.sqrt(lo * hi);
+    return roots.map(r => cx(r.re / wc, r.im / wc));
+  }
+  for (let k = 0; k < n; k++){                       // butter
+    const th = Math.PI * (2 * k + 1 + n) / (2 * n);
+    p.push(cx(Math.cos(th), Math.sin(th)));
+  }
+  return p;
+}
+// 多項式の根（昇べき係数）
+function polyRoots(c){
+  const n = c.length - 1, a = c.map(v => v / c[n]);
+  let z = [];
+  for (let k = 0; k < n; k++){ const t = 2 * Math.PI * k / n + 0.5; z.push(cx(0.9 * Math.cos(t), 0.9 * Math.sin(t))); }
+  const ev = x => { let s = cx(0, 0); for (let i = n; i >= 0; i--) s = cadd(cmul(s, x), cx(a[i], 0)); return s; };
+  for (let it = 0; it < 500; it++){
+    let move = 0;
+    for (let i = 0; i < n; i++){
+      let d = cx(1, 0);
+      for (let j = 0; j < n; j++) if (j !== i) d = cmul(d, csub(z[i], z[j]));
+      const dz = cdiv(ev(z[i]), d);
+      z[i] = csub(z[i], dz);
+      move = Math.max(move, cabs(dz));
+    }
+    if (move < 1e-14) break;
+  }
+  return z.filter(r => r.re < 0);   // 安定極のみ（逆Bessel多項式の根はすべて左半面）
+}
+
+// --- アナログ周波数変換 → 双一次変換 → SOS
+function design(opt){
+  const {type, kind, fs, order} = opt;
+  const rip = opt.ripple || 0.5;
+  const warp = f => 2 * fs * Math.tan(Math.PI * f / fs);     // プリワープ（rad/s）
+  let poles = protoPoles(type, order, rip), zeros = [];
+  if (kind === 'lp'){
+    const w0 = warp(opt.f1);
+    poles = poles.map(p => cx(p.re * w0, p.im * w0));
+  } else if (kind === 'hp'){
+    const w0 = warp(opt.f1);
+    poles = poles.map(p => cdiv(cx(w0, 0), p));
+    zeros = poles.map(() => cx(0, 0));                        // s = 0（直流に零点）
+  } else {
+    const w1 = warp(opt.f1), w2 = warp(opt.f2);
+    const bw = w2 - w1, w0 = Math.sqrt(w1 * w2);
+    const np = [];
+    poles.forEach(p => {
+      const ph = cmul(p, cx(bw / 2, 0));
+      const d = csqrt(csub(cmul(ph, ph), cx(w0 * w0, 0)));
+      np.push(cadd(ph, d), csub(ph, d));
+    });
+    poles = np;
+    zeros = new Array(order).fill(0).map(() => cx(0, 0));     // s = 0 が n 個
+  }
+  // 双一次変換
+  const K = 2 * fs;
+  const bl = s => cdiv(cx(K + s.re, s.im), cx(K - s.re, -s.im));
+  const zp = poles.map(bl);
+  const zz = zeros.map(bl);
+  while (zz.length < zp.length) zz.push(cx(-1, 0));           // 残りの零点は z = -1
+  // 2次ずつに束ねる
+  const group = list => {
+    const out = [], done = new Array(list.length).fill(false), reals = [];
+    for (let i = 0; i < list.length; i++){
+      if (done[i]) continue;
+      if (Math.abs(list[i].im) < 1e-9){ reals.push(list[i]); done[i] = true; continue; }
+      let j = -1;
+      for (let k = i + 1; k < list.length; k++)
+        if (!done[k] && Math.abs(list[k].re - list[i].re) < 1e-7 && Math.abs(list[k].im + list[i].im) < 1e-7){ j = k; break; }
+      out.push(j >= 0 ? [list[i], list[j]] : [list[i]]);
+      done[i] = true; if (j >= 0) done[j] = true;
+    }
+    for (let i = 0; i < reals.length; i += 2) out.push(reals.slice(i, i + 2));
+    return out;
+  };
+  const coef = g => {
+    if (g.length === 2){
+      if (Math.abs(g[0].im) > 1e-9) return [1, -2 * g[0].re, g[0].re * g[0].re + g[0].im * g[0].im];
+      return [1, -(g[0].re + g[1].re), g[0].re * g[1].re];
+    }
+    return [1, -g[0].re, 0];
+  };
+  const pg = group(zp), zg = group(zz), sos = [];
+  const m = Math.max(pg.length, zg.length);
+  for (let i = 0; i < m; i++){
+    const a = pg[i] ? coef(pg[i]) : [1, 0, 0];
+    const b = zg[i] ? coef(zg[i]) : [1, 0, 0];
+    sos.push({b0: b[0], b1: b[1], b2: b[2], a1: a[1], a2: a[2]});
+  }
+  // 参照周波数で利得を1にそろえる
+  const fr = kind === 'lp' ? 0 : kind === 'hp' ? fs / 2 : Math.sqrt(opt.f1 * opt.f2);
+  let g0 = magAt(sos, fr, fs);
+  if (type === 'cheby1' && order % 2 === 0){
+    const eps = Math.sqrt(Math.pow(10, rip / 10) - 1);
+    g0 *= Math.sqrt(1 + eps * eps);            // 通過域の最大を1にそろえる（scipyと同じ流儀）
+  }
+  if (g0 > 0){ sos[0].b0 /= g0; sos[0].b1 /= g0; sos[0].b2 /= g0; }
+  return sos;
+}
+function magAt(sos, f, fs){
+  const w = 2 * Math.PI * f / fs;
+  let nr = 1, ni = 0, dr = 1, di = 0;
+  const c1 = Math.cos(-w), s1 = Math.sin(-w), c2 = Math.cos(-2 * w), s2 = Math.sin(-2 * w);
+  for (const s of sos){
+    const br = s.b0 + s.b1 * c1 + s.b2 * c2, bi = s.b1 * s1 + s.b2 * s2;
+    const ar = 1 + s.a1 * c1 + s.a2 * c2, ai = s.a1 * s1 + s.a2 * s2;
+    const r1 = nr * br - ni * bi, i1 = nr * bi + ni * br; nr = r1; ni = i1;
+    const r2 = dr * ar - di * ai, i2 = dr * ai + di * ar; dr = r2; di = i2;
+  }
+  const d = dr * dr + di * di;
+  return Math.hypot((nr * dr + ni * di) / d, (ni * dr - nr * di) / d);
+}
+function sosRun(x, sos){
+  const y = Float64Array.from(x);
+  for (const s of sos){
+    let z1 = 0, z2 = 0;
+    for (let i = 0; i < y.length; i++){
+      const xi = y[i], o = s.b0 * xi + z1;
+      z1 = s.b1 * xi - s.a1 * o + z2;
+      z2 = s.b2 * xi - s.a2 * o;
+      y[i] = o;
+    }
+  }
+  return y;
+}
+function apply(x, sos, zeroPhase, pad){
+  pad = pad || 0;
+  const n = x.length, e = new Float64Array(n + 2 * pad);
+  for (let i = 0; i < n; i++) e[pad + i] = x[i];
+  let y = sosRun(e, sos);
+  if (zeroPhase){ y.reverse(); y = sosRun(y, sos); y.reverse(); }
+  return y.slice(pad, pad + n);
+}
+root.FILT = {design, apply, sosRun, protoPoles, magAt};
+})(window);
+
+</script>
+<script>window.__figAR = 0;
+window.figW = function(W0, H, m){ return window.__figAR > 0 ? Math.round((H - m.t - m.b) * window.__figAR + m.l + m.r) : W0; };</script>
+<div class="wrap">
+<div class="apphd">
+<h1 class="appid"><span class="nm">PRISM</span><span class="jp">加速度波形の解析</span></h1>
+<p class="appfull"><b>P</b>rocessing of <b>R</b>ecords for <b>I</b>dentification of <b>S</b>pectral <b>M</b>odes</p>
+</div>
+<div id="cfgBar" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;font-size:12.5px;color:#55606e;margin:0 0 16px">
+<span>設定</span><button id="cfgOpen" type="button" class="cfgBtn">開く</button><button id="cfgSave" type="button" class="cfgBtn">上書き保存</button><button id="cfgSaveAs" type="button" class="cfgBtn">名前を付けて保存</button><input type="file" id="cfgFile" accept=".prsm" style="display:none"><span id="cfgName"></span><span id="cfgMsg"></span></div>
+<p class="sub">加速度波形を読み込んで，時刻歴波形・フーリエスペクトル・地震応答スペクトルを求めます。K-NET・KiK-net・気象庁のファイルはそのまま読めます。</p>
+
+<div class="cols">
+<div>
+  <div class="panel">
+    <h2>1. 求めるもの</h2>
+    <div class="modes">
+      <button class="mode" id="mWave" aria-pressed="false" type="button">
+        <b>時刻歴波形</b>
+        <span>加速度・速度・変位とオービットを描く</span>
+      </button>
+      <button class="mode" id="mFourier" aria-pressed="true" type="button">
+        <b>フーリエスペクトル</b>
+        <span>定常な波形から卓越振動数を読む</span>
+      </button>
+      <button class="mode" id="mResp" aria-pressed="false" type="button">
+        <b>地震応答スペクトル</b>
+        <span>1質点系の応答（pSv・pSa・Sd）を求める</span>
+      </button>
+    </div>
+    <div id="waveOpt" class="hidden" style="margin-top:12px">
+      <div class="row"><label for="wT0">時間の範囲</label><input type="number" id="wT0" step="any" placeholder="自動" style="width:76px"><span class="unit">〜</span>
+        <input type="number" id="wT1" step="any" placeholder="自動" style="width:76px"><span class="unit">s</span></div>
+      <div class="row"><label class="ch"><input type="checkbox" id="orbOn" checked> NS–EWのオービットも描く</label></div>
+      <div class="row" id="orbRow" style="margin-bottom:0"><label for="orbPair">記録</label><select id="orbPair"></select>
+        <label for="orbQ">量</label><select id="orbQ"><option value="acc" selected>加速度</option><option value="vel">速度</option><option value="dis">変位</option></select></div>
+      <ul class="notes" style="margin-top:6px">
+        <li>加速度・速度・変位を縦に3段で描きます。速度・変位は，フィルター後の加速度を台形則で積分し，積分のたびに同じフィルターをかけ直します</li>
+        <li>オービットは横がEW，縦がNS，尺度は共通です（上が北，右が東）</li>
+      </ul>
+    </div>
+    <div id="cmpOpt" class="hidden" style="margin-top:12px">
+      <div class="row"><label for="refCh">基準の波形</label><select id="refCh"><option value="">なし（振幅だけを描く）</option></select></div>
+      <div class="row" style="margin-bottom:0"><label class="ch"><input type="checkbox" id="cohOn" checked> コヒーレンスも描く</label></div>
+      <ul class="notes" style="margin-top:6px">
+        <li>基準を選ぶと，区間ごとのクロススペクトルを平均して伝達関数 H = S<sub>xy</sub> / S<sub>xx</sub> を求め，振幅比と位相差（−180〜180度）を描きます</li>
+        <li>区間の分け方・窓・選別は，下の詳細設定をそのまま使います（区間は基準の波形で選びます）</li>
+      </ul>
+    </div>
+    <div id="respOpt" class="hidden" style="margin-top:12px">
+      <div class="row"><label for="respQ">求める量</label>
+        <select id="respQ"><option value="pSv" selected>擬似速度 pSv</option><option value="pSa">擬似加速度 pSa</option><option value="Sd">変位 Sd</option></select></div>
+      <div class="row"><label for="hIn">減衰定数 h</label><input type="number" id="hIn" value="5" step="any" min="0" max="99" style="width:80px"><span class="unit">%</span></div>
+      <div class="row"><label for="tminIn">周期の範囲</label><input type="number" id="tminIn" value="0.02" step="any" style="width:76px"><span class="unit">〜</span><input type="number" id="tmaxIn" value="5" step="any" style="width:76px"><span class="unit">s</span></div>
+      <div class="row" style="margin-bottom:0"><label for="ntIn">周期の刻み</label><input type="number" id="ntIn" value="200" step="1" min="10" style="width:76px"><span class="unit">点</span>
+        <label class="ch"><input type="radio" name="tsp" value="lin" checked> 等間隔</label><label class="ch"><input type="radio" name="tsp" value="log"> 対数等間隔</label></div>
+      <div class="row" style="margin-bottom:0"><label class="ch"><input type="checkbox" id="combH"> 水平2成分（NS・EW）の合成も作る</label></div>
+      <div class="row" style="margin-bottom:0"><label class="ch"><input type="checkbox" id="triOn"> トリパータイト（3量を1枚で読む図）で描く</label></div>
+      <ul class="notes" style="margin-top:6px">
+        <li>この範囲の周期ごとに1質点系の応答を計算します（点数が多いほど滑らかで時間がかかります）</li>
+        <li>pSv = ω·Sd，pSa = ω²·Sd（Sd は変位応答の最大値）</li>
+        <li>水平合成は，NSとEWを同時に解いて時刻ごとのベクトル和をとり，その最大値です（観測点コードが同じNS・EWの組を自動で探します）</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="panel">
+    <h2>2. データ</h2>
+    <div class="drop" id="drop" tabindex="0" role="button" aria-label="CSVファイルを選ぶ">
+      ここにファイルをドラッグするか，クリックして選択
+      <input type="file" id="file" accept=".csv,.txt,.NS,.EW,.UD,.NS1,.EW1,.UD1,.NS2,.EW2,.UD2,.zip,.gz,.tgz,.tar" multiple>
+    </div>
+    <ul class="notes">
+      <li>K-NET・KiK-net（.NS など）と気象庁の .csv は，そのまま読めます。ZIPのままでも構いません</li>
+      <li>強震記録はScale Factorを掛けて cm/s² に直し，NS・EW・UDを別々の波形として登録します（KiK-netの地中記録は除きます）。サンプリング周波数はヘッダーの値に合わせます</li>
+      <li>数値だけのCSVの場合：ヘッダー行は入れず，数値だけにしてください</li>
+      <li>時刻の列は不要です。加速度の列だけを並べてください（列数は自由）</li>
+      <li>単位は変換しません。換算は倍率で行ってください（g から cm/s² なら 980.665）</li>
+      <li>複数のファイルを選ぶと，列をまとめて重ね描きできます（サンプリング周波数と倍率は共通です）</li>
+    </ul>
+    <div class="row" style="margin-top:8px;margin-bottom:0"><button class="mode" id="clearData" type="button" style="padding:4px 10px;font-size:12.5px">読み込んだデータを消す</button></div>
+    <div class="row" style="margin-top:14px">
+      <label for="fs">サンプリング周波数</label>
+      <input type="number" id="fs" value="100" min="1" step="1">
+      <span class="unit">Hz</span>
+    </div>
+    <div class="row">
+      <label for="scale">倍率</label>
+      <input type="number" id="scale" value="1" step="any">
+      <span class="unit">読み込んだ値に掛けます</span>
+    </div>
+    <div class="row">
+      <label for="unitIn">加速度の単位</label>
+      <select id="unitIn"><option value="cm" selected>cm/s²（gal）</option><option value="m">m/s²</option><option value="g">g</option><option value="none">指定しない</option></select>
+      <span class="unit">図と表の軸に使います（倍率を掛けたあとの単位）</span>
+    </div>
+    <div id="chWrap" class="hidden">
+      <div class="row" style="margin-bottom:6px"><label>チャンネル</label></div>
+      <div class="chs" id="chs"></div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <h2>3. 計算</h2>
+    <button class="run" id="run" disabled type="button">計算する</button>
+    <div class="status" id="status">CSVを読み込んでください。</div>
+    <ul class="notes" id="fixed"></ul>
+    <details id="advBox" style="margin-top:12px">
+      <summary style="cursor:pointer;font-size:13.5px;color:var(--ink-2)">詳細設定（波形に施す順に並べています）　<span id="filtSum"></span></summary>
+      <div style="border-top:1px solid var(--rule);margin-top:10px;padding-top:10px">
+
+        <div class="row hidden" id="kindWrap" style="margin-bottom:10px">
+          <label>よく使う組合せ</label>
+          <label class="ch"><input type="radio" name="kind" value="micro" checked> 常時微動</label>
+          <label class="ch"><input type="radio" name="kind" value="quake"> 地震記録</label>
+          <span class="unit">押すと②〜④に既定値が入ります</span>
+        </div>
+
+        <div class="stepH">① 波形の下ごしらえ</div>
+        <div class="row"><label class="ch"><input type="checkbox" id="demeanOn" checked> 平均値を差し引く</label></div>
+        <div id="filtBox">
+          <div class="row"><label for="fKind">フィルター</label>
+            <select id="fKind"><option value="none">なし</option><option value="lp">ローパス</option><option value="hp" selected>ハイパス</option><option value="bp">バンドパス</option></select></div>
+          <div class="row" id="fRow1"><label for="fF1"><span id="fF1Lab">遮断</span></label><input type="number" id="fF1" value="0.05" step="any" min="0" style="width:80px"><span class="unit">Hz</span>
+            <span id="fF2Wrap" class="hidden"><span class="unit">〜</span><input type="number" id="fF2" value="20" step="any" min="0" style="width:80px"><span class="unit">Hz</span></span></div>
+          <div class="row" id="fRow2"><label for="fType">種類</label>
+            <select id="fType"><option value="butter">Butterworth</option><option value="cheby1">Chebyshev I</option><option value="bessel">Bessel</option></select>
+            <label for="fOrd">次数</label><select id="fOrd"><option>2</option><option selected>4</option><option>6</option><option>8</option></select></div>
+          <div class="row" id="fRow3"><span id="fRipWrap" class="hidden"><label for="fRip">リップル</label><input type="number" id="fRip" value="0.5" step="any" min="0.01" style="width:70px"><span class="unit">dB</span></span>
+            <label for="fPhase">位相</label><select id="fPhase"><option value="zero" selected>ゼロ位相（前後2回）</option><option value="causal">因果（1回）</option></select></div>
+        </div>
+
+        <div id="fourBox">
+          <div class="stepH">② 区間に分ける</div>
+          <div class="row"><label for="segIn">区間の長さ</label>
+            <select id="segIn"><option value="0">全長で1回</option><option value="512">512</option><option value="1024">1024</option><option value="2048">2048</option><option value="4096" selected>4096</option><option value="8192">8192</option><option value="16384">16384</option></select><span class="unit">点</span>
+            <label for="ovIn">隣との重なり</label><select id="ovIn"><option value="0">なし</option><option value="25">1/4</option><option value="50" selected>半分</option><option value="75">3/4</option></select></div>
+
+          <div class="stepH">③ 使う区間を選ぶ</div>
+          <div class="row"><label class="ch"><input type="checkbox" id="selOn" checked> 揺れの大きさで区間をふるいにかける</label></div>
+          <div class="row" id="selWrap"><label for="selHi">除く区間</label><span class="unit">中央値の</span><input type="number" id="selHi" value="3" step="any" min="1" style="width:64px"><span class="unit">倍より大きい，または</span>
+            <input type="number" id="selLo" value="0.1" step="any" min="0" max="1" style="width:64px"><span class="unit">倍より小さい区間</span></div>
+
+          <div class="stepH">④ 窓をかけて，区間ごとのスペクトルを平均する</div>
+          <div class="row"><label for="winIn">窓関数</label>
+            <select id="winIn"><option value="none">なし（矩形）</option><option value="hann" selected>Hann</option><option value="hamming">Hamming</option><option value="blackman">Blackman</option></select></div>
+
+          <div class="stepH">⑤ スペクトルを滑らかにする</div>
+          <div class="row" id="smWrap" style="margin-bottom:0"><label for="smType">平滑化</label>
+            <select id="smType"><option value="none" selected>なし</option><option value="parzen">Parzen窓</option><option value="hann">Hann窓</option></select>
+            <span id="smBwWrap" class="hidden"><label for="smBw">帯域幅</label><input type="number" id="smBw" value="0.2" step="any" min="0.001" style="width:76px"><span class="unit">Hz</span></span></div>
+        </div>
+
+      </div>
+    </details>
+  </div>
+</div>
+
+<div>
+  <div class="panel">
+    <h2 id="outTitle">結果</h2>
+    <div class="empty" id="empty">計算すると，ここにグラフが表示されます。</div>
+    <div id="out" class="hidden">
+      <div class="row" id="axBar" style="margin-bottom:8px;font-size:12.5px;color:var(--ink-2);flex-wrap:wrap;gap:8px"><span><span id="axXLab">横軸</span> <input type="number" id="pX0" style="width:62px" step="any" placeholder="自動"> 〜 <input type="number" id="pX1" style="width:62px" step="any" placeholder="自動"> <select id="pXL"><option value="lin" selected>線形</option><option value="log">対数</option></select></span><span id="axY" style="margin-left:10px">縦軸 <input type="number" id="pY0" style="width:62px" step="any" placeholder="自動"> 〜 <input type="number" id="pY1" style="width:62px" step="any" placeholder="自動"> <select id="pYL"><option value="lin" selected>線形</option><option value="log">対数</option></select></span>
+<span style="margin-left:10px">ピークの印 <select id="pkMark"><option value="none" selected>表示しない</option><option value="one">1位だけ</option><option value="one5">1位だけ（数値も）</option><option value="five">上位5つ</option></select></span></div>
+      <svg id="plot" role="img" aria-label="解析結果のグラフ"></svg>
+      <div class="legend" id="legend"></div>
+      <div id="p2Wrap" class="hidden"><div class="stepH" id="p2Ttl">振幅比</div><svg id="plot2" role="img" aria-label="振幅比"></svg></div>
+      <div id="p3Wrap" class="hidden"><div class="stepH" id="p3Ttl">位相差</div><svg id="plot3" role="img" aria-label="位相差"></svg></div>
+      <div id="p4Wrap" class="hidden"><div class="stepH" id="p4Ttl">コヒーレンス</div><svg id="plot4" role="img" aria-label="コヒーレンス"></svg></div>
+      <div id="orbWrap" class="hidden"><div class="stepH">NS–EWのオービット</div><svg id="orbit" role="img" aria-label="NS–EWのオービット"></svg></div>
+      <table id="peaks" class="hidden"><thead></thead><tbody></tbody></table>
+      <div class="row" style="margin-top:12px;margin-bottom:0"><button class="dl" id="dl" type="button">CSVをダウンロード</button>
+        <button class="mode" id="orbDl" type="button" style="padding:4px 10px;font-size:12.5px;margin-left:8px">オービットのCSV</button></div>
+    </div>
+  </div>
+
+</div>
+</div>
+</div>
+
+<script>
+const SEG = 4096, OVERLAP = 0.5, LP = 20, ORDER = 4;
+const RMS_HI = 3, RMS_LO = 1/10;
+let DAMP = 0.05, TMIN = 0.02, TMAX = 5, NT = 200, TLOG = false;
+const COLORS = ['#1b2430','#55606e','#1b2430','#8b939c','#55606e','#8b939c'];
+const DASHES = ['', '6 3', '2 2', '', '8 3 2 3', '1 3'];
+
+let raw = [], labels = [], nch = 0, mode = 'fourier', result = null;
+
+const $ = id => document.getElementById(id);
+const status = (t, err) => { $('status').textContent = t; $('status').className = 'status' + (err ? ' err' : ''); };
+
+function kind(){
+  const r = document.querySelector('input[name=kind]:checked');
+  return r ? r.value : 'micro';
+}
+
+function readFilt(fs){
+  const kind = $('fKind').value;
+  if (kind === 'none') return {sos: null, kind, zero: true, pad: 0, label: 'フィルターなし'};
+  const type = $('fType').value, order = +$('fOrd').value || 4;
+  const rip = Math.max(0.01, parseFloat($('fRip').value) || 0.5);
+  const zero = $('fPhase').value === 'zero';
+  let f1 = parseFloat($('fF1').value), f2 = parseFloat($('fF2').value);
+  const ny = fs / 2;
+  let lowered = false;
+  if (!(f1 > 0)) return {err: '遮断周波数を入力してください。'};
+  if (kind === 'bp'){
+    if (!(f2 > f1)) return {err: 'バンドパスは 下限 < 上限 としてください。'};
+    if (f2 >= ny){ f2 = 0.8 * ny; lowered = true; }
+    if (f1 >= f2) return {err: '遮断周波数がサンプリング周波数に対して高すぎます。'};
+  } else if (f1 >= ny){ f1 = 0.8 * ny; lowered = true; }
+  const fLow = kind === 'lp' ? null : f1;
+  const pad = fLow ? Math.min(Math.round(1.5 * order / fLow * fs), Math.round(120 * fs)) : Math.round(3 * order * fs / Math.max(f1, 1e-6) / 100);
+  const names = {butter: 'Butterworth', cheby1: 'Chebyshev I', bessel: 'Bessel'};
+  const label = (kind === 'lp' ? 'ローパス ' + (+f1.toPrecision(4)) + ' Hz'
+    : kind === 'hp' ? 'ハイパス ' + (+f1.toPrecision(4)) + ' Hz'
+    : 'バンドパス ' + (+f1.toPrecision(4)) + '〜' + (+f2.toPrecision(4)) + ' Hz')
+    + '，' + names[type] + ' ' + order + '次' + (type === 'cheby1' ? '（リップル ' + rip + ' dB）' : '')
+    + '，' + (zero ? 'ゼロ位相' : '因果');
+  const sos = FILT.design({type, kind, fs, f1, f2, order, ripple: rip});
+  return {sos, kind, f1, f2, zero, pad: Math.max(pad, 10), label, lowered};
+}
+function filtNote(){
+  const fs = +$('fs').value || 100;
+  const F = readFilt(fs);
+  const dm = $('demeanOn') && $('demeanOn').checked;
+  return F.err ? '<li>フィルター：' + F.err + '</li>'
+    : '<li>' + (dm ? '平均値を差し引き，' : '') + F.label + 'でフィルターします</li>';
+}
+function smNote(){
+  const t = $('smType').value, b = parseFloat($('smBw').value);
+  if (t === 'none' || !(b > 0)) return '';
+  return '<li>' + (t === 'parzen' ? 'Parzen窓' : 'Hann窓') + '（帯域幅 ' + b + ' Hz）で振幅を平滑化します。面積は変えません</li>';
+}
+function fixedNotes(){
+  const f = $('fixed');
+  const lp = filtNote();
+  if (mode === 'wave'){
+    f.innerHTML = lp
+      + '<li>速度は加速度を，変位は速度をそれぞれ台形則で積分し，積分のたびに同じフィルターをかけ直します（単位は ' + UJ('acc') + '，' + UJ('vel') + '，' + UJ('dis') + '）</li>'
+      + ($('orbOn').checked ? '<li>NS–EWのオービットも描きます（横がEW，縦がNS，尺度は共通）</li>' : '');
+    return;
+  }
+  if (mode === 'resp'){
+    f.innerHTML = lp
+      + '<li>波形の全長を用い，減衰定数 h = ' + (+(DAMP * 100).toPrecision(4)) + ' % で応答を計算します</li>'
+      + '<li>周期 ' + TMIN + '〜' + TMAX + ' 秒を' + (TLOG ? '対数等間隔' : '等間隔') + 'に ' + NT + ' 点，'
+        + ({pSv: '擬似速度 pSv', pSa: '擬似加速度 pSa', Sd: '変位 Sd'})[$('respQ').value] + '（' + UJ($('respQ').value) + '）</li>'
+      + ($('combH').checked ? '<li>NS・EWの組は，同時に解いて時刻ごとのベクトル和の最大値を合成（H）とします</li>' : '')
+      + ($('triOn').checked ? '<li>トリパータイトで描きます（縦軸 pSv，斜めの目盛りで Sd と pSa を読みます。求める量の指定より優先します）</li>' : '');
+  } else {
+    const o = readFour();
+    const wj = {none: '窓関数はかけずに', hann: '両端をなだらかに0に近づける重み（Hann窓）をかけてから',
+                hamming: 'Hamming窓をかけてから', blackman: 'Blackman窓をかけてから'};
+    f.innerHTML = lp
+      + (o.seg ? '<li>' + o.seg + ' 点ずつの区間に区切り（' + OVJA[Math.round(o.overlap * 100)] + 'る），各区間に'
+            + wj[o.win] + '，区間ごとのスペクトルを平均します</li>'
+          : '<li>分割せず，波形の全長で1回だけFFTします（' + WINJA[o.win] + '）</li>')
+      + (o.selOn ? '<li>揺れの大きさ（二乗平均の平方根）が全区間の中央値の ' + o.hi + ' 倍を超える区間と ' + o.lo
+            + ' 倍を下回る区間は，人の通行などの雑音とみなして除きます</li>'
+          : '<li>区間の選別はしません</li>')
+      + smNote()
+      + '<li>振幅は各調和成分の振幅（窓の総和で正規化）で，単位は加速度と同じ ' + UJ('amp') + ' です</li>'
+      + ($('refCh') && $('refCh').value !== '' ? '<li>振幅スペクトルはそのまま描き，基準「' + labels[+$('refCh').value] + '」に対する振幅比・位相差・コヒーレンスを別の図に足します（H = S<sub>xy</sub>/S<sub>xx</sub>）</li>'
+          + '<li>コヒーレンスは区間が1つだけのときは常に1になります（②で区間を分けてください）</li>' : '');
+  }
+}
+
+function setMode(m){
+  mode = m;
+  $('mWave').setAttribute('aria-pressed', m === 'wave');
+  $('mFourier').setAttribute('aria-pressed', m === 'fourier');
+  $('mResp').setAttribute('aria-pressed', m === 'resp');
+  $('kindWrap').classList.toggle('hidden', m !== 'fourier');
+  $('fourBox').classList.toggle('hidden', m !== 'fourier');
+  $('respOpt').classList.toggle('hidden', m !== 'resp');
+  $('waveOpt').classList.toggle('hidden', m !== 'wave');
+  $('cmpOpt').classList.toggle('hidden', m !== 'fourier');
+  ['p2Wrap', 'p3Wrap', 'p4Wrap', 'orbWrap'].forEach(id => $(id).classList.add('hidden'));
+  $('out').classList.add('hidden');
+  $('empty').classList.remove('hidden');
+  result = null;
+  fixedNotes();
+}
+// 「常時微動」「地震記録」は既定値の入口（押すと各欄に典型的な値が入る）
+function applyKindPreset(){
+  const q = kind() === 'quake';
+  $('segIn').value = q ? '0' : '4096';
+  $('ovIn').value = q ? '0' : '50';
+  $('winIn').value = q ? 'none' : 'hann';
+  $('selOn').checked = !q;
+  $('selHi').value = 3; $('selLo').value = 0.1;
+  syncFour();
+}
+function syncFour(){
+  const seg = +$('segIn').value || 0;
+  $('ovIn').disabled = !seg;
+  $('selOn').disabled = !seg;
+  $('selWrap').classList.toggle('hidden', !($('selOn').checked && seg));
+  fixedNotes();
+}
+document.querySelectorAll('input[name=kind]').forEach(r => r.onchange = () => { applyKindPreset(); $('out').classList.add('hidden');
+  $('empty').classList.remove('hidden'); result = null; });
+['segIn', 'ovIn', 'winIn', 'selOn', 'selHi', 'selLo', 'demeanOn'].forEach(id => $(id).onchange = syncFour);
+['fKind', 'fF1', 'fF2', 'fType', 'fOrd', 'fRip', 'fPhase', 'fs'].forEach(id => { const e = $(id); if (e) e.onchange = () => { syncFilt(id === 'fKind'); fixedNotes(); }; });
+const FDEF = {lp: [20, 20], hp: [0.05, 20], bp: [0.05, 20]};
+function syncFilt(changedKind){
+  const k = $('fKind').value;
+  if (changedKind && FDEF[k]){ $('fF1').value = FDEF[k][0]; $('fF2').value = FDEF[k][1]; }
+  $('fRow1').classList.toggle('hidden', k === 'none');
+  $('fRow2').classList.toggle('hidden', k === 'none');
+  $('fRow3').classList.toggle('hidden', k === 'none');
+  $('fF2Wrap').classList.toggle('hidden', k !== 'bp');
+  $('fRipWrap').classList.toggle('hidden', $('fType').value !== 'cheby1');
+  $('fF1Lab').textContent = k === 'bp' ? '通過域' : '遮断';
+  const F = readFilt(+$('fs').value || 100);
+  const sum = $('filtSum');
+  if (sum) sum.textContent = F.err ? F.err : F.label;
+}
+syncFilt();
+$('mWave').onclick = () => setMode('wave');
+$('mFourier').onclick = () => setMode('fourier');
+$('mResp').onclick = () => setMode('resp');
+
+const drop = $('drop');
+drop.onclick = () => $('file').click();
+drop.onkeydown = e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); $('file').click(); } };
+drop.ondragleave = () => drop.classList.remove('over');
+// 画面のどこに落としても読む。フォルダのドラッグにも対応
+// 注意：DataTransfer は await をまたぐと空になるので，同期のうちに控えを取る
+function snapFiles(dt){ try { return dt.files ? [...dt.files] : []; } catch (e){ return []; } }
+function snapEntries(dt){
+  try { return dt.items ? [...dt.items].map(i => (i.webkitGetAsEntry ? i.webkitGetAsEntry() : null)).filter(Boolean) : []; }
+  catch (e){ return []; }
+}
+const withTimeout = (pr, ms, tag) => Promise.race([pr, new Promise((_, rej) => setTimeout(() => rej(new Error('時間切れ：' + tag)), ms))]);
+async function filesFromEntries(entries){
+  const out = [];
+  const readAll = rd => new Promise((res, rej) => {
+    const acc = [];
+    const step = () => rd.readEntries(b => { if (!b.length) return res(acc); acc.push(...b); step(); }, rej);
+    step();
+  });
+  async function walk(entry, depth){
+    if (depth > 8) return;
+    if (entry.isFile){ out.push(await withTimeout(new Promise((res, rej) => entry.file(res, rej)), 8000, entry.name)); return; }
+    if (entry.isDirectory){ for (const e of await withTimeout(readAll(entry.createReader()), 15000, entry.name)) await walk(e, depth + 1); }
+  }
+  for (const e of entries) await walk(e, 0);
+  return out;
+}
+['dragenter', 'dragover'].forEach(t => window.addEventListener(t, e => {
+  const dt = e.dataTransfer;
+  if (dt && [...(dt.types || [])].includes('Files')){
+    e.preventDefault();
+    try { dt.dropEffect = 'copy'; } catch (err){}
+    drop.classList.add('over');   // 受け取っていることが分かるように光らせる
+  }
+}));
+window.addEventListener('dragleave', e => { if (!e.relatedTarget) drop.classList.remove('over'); });
+window.addEventListener('drop', async e => {
+  const dt = e.dataTransfer;
+  if (!dt) return;
+  e.preventDefault();
+  drop.classList.remove('over');
+  const plain = snapFiles(dt), entries = snapEntries(dt);   // ← 同期のうちに控える
+  if (!plain.length && !entries.length){
+    status('ドロップされたものにファイルがありませんでした。枠をクリックして選んでください。', true);
+    return;
+  }
+  status('ファイルを集めています...（ファイル ' + plain.length + ' 件，項目 ' + entries.length + ' 件）');
+  let list = [];
+  if (entries.length){
+    try { list = await filesFromEntries(entries); }
+    catch (err){ list = []; }
+  }
+  if (!list.length) list = plain;
+  if (list.length) readFiles(list);
+  else status('ドロップされたファイルを取得できませんでした。枠をクリックして選んでください。', true);
+});
+$('file').onchange = e => { if (e.target.files.length) readFiles([...e.target.files]); e.target.value = ''; };
+$('clearData').onclick = () => {
+  raw = []; labels = []; nch = 0; result = null;
+  $('chs').innerHTML = ''; $('chWrap').classList.add('hidden');
+  orbit = null; $('orbit').innerHTML = ''; refreshPairs();
+  $('run').disabled = true; $('out').classList.add('hidden'); $('empty').classList.remove('hidden');
+  status('CSVを読み込んでください。');
+};
+/* ===== 強震記録（K-NET・KiK-net・気象庁）の読み取り ===== */
+const COMPS = ['NS', 'EW', 'UD'];
+async function streamBytes(u8, fmt){
+  const s = new Blob([u8]).stream().pipeThrough(new DecompressionStream(fmt));
+  return new Uint8Array(await new Response(s).arrayBuffer());
+}
+function untar(u8){
+  const out = []; let p = 0, longName = null;
+  const str = (h, a, b) => { let s = ''; for (let i = a; i < b && h[i]; i++) s += String.fromCharCode(h[i]); return s; };
+  while (p + 512 <= u8.length){
+    const h = u8.subarray(p, p + 512);
+    if (h[0] === 0) break;
+    let name = str(h, 0, 100);
+    const size = parseInt(str(h, 124, 136).trim() || '0', 8) || 0;
+    const type = h[156];
+    if (str(h, 257, 262) === 'ustar'){ const pre = str(h, 345, 500); if (pre) name = pre + '/' + name; }
+    const data = u8.subarray(p + 512, p + 512 + size);
+    if (type === 76){ longName = new TextDecoder().decode(data).replace(/\0[\s\S]*$/, ''); }
+    else {
+      if (longName){ name = longName; longName = null; }
+      if (type === 0 || type === 48) out.push({name, data: data.slice()});
+    }
+    p += 512 + Math.ceil(size / 512) * 512;
+  }
+  return out;
+}
+async function unzip(u8){
+  const dv = new DataView(u8.buffer, u8.byteOffset, u8.byteLength);
+  let e = -1;
+  for (let i = u8.length - 22; i >= Math.max(0, u8.length - 65557); i--)
+    if (dv.getUint32(i, true) === 0x06054b50){ e = i; break; }
+  if (e < 0) throw new Error('ZIPの形式を読み取れません');
+  const n = dv.getUint16(e + 10, true); let p = dv.getUint32(e + 16, true); const out = [];
+  for (let k = 0; k < n; k++){
+    if (dv.getUint32(p, true) !== 0x02014b50) break;
+    const method = dv.getUint16(p + 10, true), csize = dv.getUint32(p + 20, true);
+    const nl = dv.getUint16(p + 28, true), xl = dv.getUint16(p + 30, true), cl = dv.getUint16(p + 32, true);
+    const off = dv.getUint32(p + 42, true);
+    const name = new TextDecoder().decode(u8.subarray(p + 46, p + 46 + nl));
+    p += 46 + nl + xl + cl;
+    if (name.endsWith('/')) continue;
+    const ln = dv.getUint16(off + 26, true), lx = dv.getUint16(off + 28, true);
+    const d = u8.subarray(off + 30 + ln + lx, off + 30 + ln + lx + csize);
+    if (method === 0) out.push({name, data: d.slice()});
+    else if (method === 8) out.push({name, data: await streamBytes(d, 'deflate-raw')});
+  }
+  return out;
+}
+async function expand(name, u8, depth){
+  depth = depth || 0;
+  if (depth > 4) return [{name, data: u8}];
+  const isGz = u8.length > 2 && u8[0] === 0x1f && u8[1] === 0x8b;
+  const isZip = u8.length > 4 && u8[0] === 0x50 && u8[1] === 0x4b && u8[2] === 3 && u8[3] === 4;
+  const isTar = u8.length > 262 && String.fromCharCode(...u8.subarray(257, 262)) === 'ustar';
+  if (isGz){
+    const d = await streamBytes(u8, 'gzip');
+    return expand(name.replace(/\.tgz$/i, '.tar').replace(/\.gz$/i, ''), d, depth + 1);
+  }
+  if (isZip || isTar){
+    const list = isZip ? await unzip(u8) : untar(u8);
+    const out = [];
+    for (const f of list) out.push(...await expand(f.name, f.data, depth + 1));
+    return out;
+  }
+  return [{name, data: u8}];
+}
+function decodeText(u8){
+  let t = new TextDecoder('utf-8').decode(u8);
+  if (t.includes('�')){ try { t = new TextDecoder('shift_jis').decode(u8); } catch (e){} }
+  return t;
+}
+
+/* ================= 形式の判別と読込 ================= */
+// "2026/07/28 16:27:15.28" や "2026 07 28 16 27 00" → ミリ秒（時差は考えず壁時計の値のまま）
+function parseTime(t){
+  const m = String(t || '').match(/(\d{4})\D+(\d{1,2})\D+(\d{1,2})\D+(\d{1,2})\D+(\d{1,2})\D+(\d{1,2}(?:\.\d+)?)/);
+  if (!m) return NaN;
+  const sec = parseFloat(m[6]);
+  return Date.UTC(+m[1], +m[2] - 1, +m[3], +m[4], +m[5], Math.floor(sec)) + Math.round((sec - Math.floor(sec)) * 1000);
+}
+function parseNied(name, text){
+  const g = re => { const m = text.match(re); return m ? m[1].trim() : ''; };
+  const code = g(/^Station Code[ \t]+(.*)$/m);
+  const sf = g(/^Scale Factor[ \t]+(.*)$/m).match(/([\d.]+)\s*\(gal\)\s*\/\s*([\d.]+)/i);
+  const fs = parseFloat(g(/^Sampling Freq\(Hz\)[ \t]+(.*)$/m));
+  if (!code || !sf || !(fs > 0)) throw new Error('ヘッダーを読み取れません');
+  const dir = g(/^Dir\.[ \t]+(.*)$/m).toUpperCase();
+  const ext = ((name.match(/\.([A-Za-z]{2}\d?)$/) || [])[1] || '').toUpperCase();
+  let net = 'K-NET', bore = false, comp = null;
+  const m = ext.match(/^(NS|EW|UD)([12])$/);
+  if (m){ net = 'KiK-net'; comp = m[1]; bore = m[2] === '1'; }
+  else if (/^(NS|EW|UD)$/.test(ext)) comp = ext;
+  if (/^[1-6]$/.test(dir)){
+    net = 'KiK-net'; const d = +dir; bore = d <= 3; comp = comp || COMPS[(d - 1) % 3];
+  } else if (!comp){
+    comp = dir.startsWith('N') ? 'NS' : dir.startsWith('E') ? 'EW' : dir.startsWith('U') ? 'UD' : null;
+  }
+  if (!comp) throw new Error('成分（Dir.）を判別できません');
+  const lines = text.split(/\r?\n/);
+  let k = lines.findIndex(l => /^Memo\./.test(l));
+  if (k < 0) k = 16;
+  const body = lines.slice(k + 1).join(' ').trim().split(/\s+/);
+  const scale = parseFloat(sf[1]) / parseFloat(sf[2]);
+  const x = new Float64Array(body.length);
+  let n = 0;
+  for (const s of body){ const v = +s; if (s !== '' && isFinite(v)) x[n++] = v * scale; }
+  const num = s => { const v = parseFloat(s); return isFinite(v) ? v : null; };
+  return {
+    net, bore, comp, code, fs, data: x.subarray(0, n),
+    lat: num(g(/^Station Lat\.[ \t]+(.*)$/m)), lon: num(g(/^Station Long\.[ \t]+(.*)$/m)),
+    height: num(g(/^Station Height\(m\)[ \t]+(.*)$/m)),
+    rec: g(/^Record Time[ \t]+(.*)$/m),
+    start: parseTime(g(/^Record Time[ \t]+(.*)$/m)) - 15000,   // 記録はRecord Timeの15秒前から
+    origin: {time: g(/^Origin Time[ \t]+(.*)$/m), lat: num(g(/^Lat\.[ \t]+(.*)$/m)), lon: num(g(/^Long\.[ \t]+(.*)$/m)),
+             dep: num(g(/^Depth\. ?\(km\)[ \t]+(.*)$/m)), mag: num(g(/^Mag\.[ \t]+(.*)$/m))}
+  };
+}
+function parseJma(name, text){
+  const lines = text.split(/\r?\n/);
+  const head = lines.slice(0, 40);
+  const kv = re => { for (const l of head){ const m = l.match(re); if (m) return m[1].trim(); } return ''; };
+  // 例1：SITE CODE= 93025宇城市豊野町  ,震央緯度,震央経度,深さ,M,発生時刻(Excelシリアル),…
+  // 例2：SITE CODE= 常滑市飛香台（コードはファイル名 41351YYYYMMDDhhmmss_acc.csv の先頭）
+  const site = kv(/SITE\s*CODE\s*=\s*(.*)/i).split(',').map(t => t.trim());
+  let code = (site[0].match(/^[0-9A-Za-z]+/) || [''])[0];
+  const stName = site[0].replace(/^[0-9A-Za-z]+/, '').trim();
+  const base = name.replace(/^.*[\\/]/, '');
+  if (!code){ const m = base.match(/^([0-9A-Za-z]+?)(\d{14})_acc/i); if (m) code = m[1]; }
+  let origin = null;
+  if (site.length >= 6){
+    const q = site.slice(1, 6).map(Number);
+    if (q.every(isFinite)){
+      const d = new Date(Math.round((q[4] - 25569) * 86400 * 100) * 10);   // Excelシリアル値（日本時間），0.01秒まで
+      const z = n => String(n).padStart(2, '0');
+      const t = d.getUTCFullYear() + '/' + z(d.getUTCMonth() + 1) + '/' + z(d.getUTCDate()) + ' ' + z(d.getUTCHours()) + ':' + z(d.getUTCMinutes()) + ':' + z(d.getUTCSeconds()) + '.' + String(Math.round(d.getUTCMilliseconds() / 10)).padStart(2, '0');
+      origin = {time: t, lat: q[0], lon: q[1], dep: q[2], mag: q[3]};
+    }
+  }
+  const lat = parseFloat(kv(/^\s*LAT\.?\s*=\s*([-\d.]+)/i)), lon = parseFloat(kv(/^\s*LON[G]?\.?\s*=\s*([-\d.]+)/i));
+  const fs = parseFloat(kv(/SAMPLING\s*RATE\s*=\s*([\d.]+)/i));
+  const unit = kv(/UNIT\s*=\s*(.*)/i).toLowerCase();
+  const t0 = kv(/INITIAL\s*TIME\s*=\s*(.*)/i).replace(/,+$/, '');
+  if (!(fs > 0)) throw new Error('サンプリング周波数を読み取れません');
+  let h = lines.findIndex(l => !/=/.test(l) && /NS/i.test(l) && /EW/i.test(l) && /UD/i.test(l));
+  if (h < 0) throw new Error('NS・EW・UDの見出し行が見つかりません');
+  const cols = lines[h].split(',').map(s => s.trim().toUpperCase());
+  const idx = {NS: cols.indexOf('NS'), EW: cols.indexOf('EW'), UD: cols.indexOf('UD')};
+  let mul = 1;
+  if (/m\/s/.test(unit) && !/cm/.test(unit)) mul = 100;
+  const arr = {NS: [], EW: [], UD: []};
+  for (let i = h + 1; i < lines.length; i++){
+    const p = lines[i].split(',');
+    if (p.length < 2) continue;
+    for (const c of COMPS){ if (idx[c] >= 0){ const v = parseFloat(p[idx[c]]); if (isFinite(v)) arr[c].push(v * mul); } }
+  }
+  if (!code) code = base.replace(/\.[^.]*$/, '').replace(/[^0-9A-Za-z_-]/g, '') || 'JMA';
+  return {net: 'JMA', code, name: stName, origin, fs, start: parseTime(t0), lat: isFinite(lat) ? lat : null, lon: isFinite(lon) ? lon : null, height: null, rec: t0,
+    comps: Object.fromEntries(COMPS.filter(c => arr[c].length).map(c => [c, Float64Array.from(arr[c])]))};
+}
+
+async function readFiles(files){
+  let ok = 0, ng = 0, bore = 0, msg = '';
+  const fsSet = new Set();
+  for (const f of files){
+    let entries;
+    try { entries = await expand(f.name, new Uint8Array(await f.arrayBuffer())); }
+    catch (err){ ng++; msg = f.name + '：展開できません（' + err.message + '）'; continue; }
+    for (const en of entries){
+      const short = en.name.replace(/^.*[\\/]/, '');
+      const head = decodeText(en.data.subarray(0, Math.min(en.data.length, 4000)));
+      try {
+        if (/Station Code/.test(head) && /Scale Factor/.test(head)){
+          const r = parseNied(short, decodeText(en.data));
+          if (r.bore){ bore++; continue; }                   // KiK-netの地中記録は除外
+          addCh(r.code + ' ' + r.comp, r.data); fsSet.add(r.fs); ok++;
+        } else if (/SITE\s*CODE/i.test(head) || (/SAMPLING\s*RATE/i.test(head) && /NS/.test(head))){
+          const r = parseJma(short, decodeText(en.data));
+          let n0 = 0;
+          for (const c of COMPS) if (r.comps[c]){ addCh(r.code + ' ' + c, r.comps[c]); n0++; }
+          if (!n0) throw new Error('成分を読み取れません');
+          fsSet.add(r.fs); ok++;
+        } else { parse(decodeText(en.data), short); ok++; }
+      } catch (err){ ng++; msg = short + '：' + err.message; }
+    }
+  }
+  if (fsSet.size === 1){
+    const v = [...fsSet][0];
+    $('fs').value = v;
+    $('unitIn').value = 'cm';
+    syncFilt(); fixedNotes();
+  }
+  if (ok){
+    status(nch + ' 波形を読み込みました（ファイル ' + ok + ' 件'
+      + (bore ? '，地中記録 ' + bore + ' を除外' : '') + (ng ? '，失敗 ' + ng + ' 件' : '') + '）。'
+      + (fsSet.size === 1 ? 'サンプリング周波数はヘッダーの ' + [...fsSet][0] + ' Hz にしました。'
+        : fsSet.size > 1 ? 'サンプリング周波数が異なる記録が混ざっています（' + [...fsSet].join('，') + ' Hz）。上の欄で選んでください。' : ''),
+      fsSet.size > 1);
+  } else if (msg) status(msg, true);
+}
+
+function readFile(file){
+  const r = new FileReader();
+  r.onload = () => { try { parse(r.result, file.name); } catch (err) { status(err.message, true); } };
+  r.onerror = () => status('ファイルを読めませんでした。', true);
+  r.readAsText(file);
+}
+
+function renderChs(){
+  const chs = $('chs');
+  const keep = new Set(Array.from(chs.querySelectorAll('input:checked')).map(e => +e.value));
+  chs.innerHTML = '';
+  labels.forEach((lb, i) => {
+    const l = document.createElement('label');
+    l.className = 'ch';
+    const on = keep.size ? keep.has(i) : i === 0;
+    l.innerHTML = '<input type="checkbox" value="' + i + '"' + (on ? ' checked' : '') + '> ' + lb;
+    chs.appendChild(l);
+  });
+}
+function parse(text, name){
+  const rows = text.split(/\r?\n/).filter(l => l.trim() !== '');
+  if (!rows.length) throw new Error('データが空です。');
+  const data = [];
+  let skipped = 0;
+  for (const line of rows){
+    const v = line.split(/[,\s;]+/).filter(s => s !== '').map(Number);
+    if (!v.length || v.some(x => !isFinite(x))) { skipped++; continue; }
+    data.push(v);
+  }
+  if (data.length < 64) throw new Error('数値の行が足りません。ヘッダーや文字列が含まれていないか確認してください。');
+  const cols = Math.min(...data.map(v => v.length));
+  const base = name.replace(/\.[^.]*$/, '');
+  for (let c = 0; c < cols; c++)
+    addCh(cols > 1 ? base + ' ch' + (c + 1) : base, Float64Array.from(data, v => v[c]));
+  status(name + ' を読み込みました。' + data.length + ' 行，' + nch + ' 列'
+    + (skipped ? '（数値でない ' + skipped + ' 行は読み飛ばしました）' : ''));
+}
+// 波形を1つ追加する
+function addCh(label, arr){
+  raw.push(arr instanceof Float64Array ? arr : Float64Array.from(arr));
+  labels.push(label);
+  nch = raw.length;
+  renderChs();
+  $('chWrap').classList.remove('hidden');
+  $('run').disabled = false;
+  $('out').classList.add('hidden');
+  $('empty').classList.remove('hidden');
+  refreshPairs();
+}
+
+function mean(a){ let s = 0; for (let i = 0; i < a.length; i++) s += a[i]; return s / a.length; }
+function rms(a, i0, n){ let s = 0; for (let i = 0; i < n; i++) s += a[i0 + i] * a[i0 + i]; return Math.sqrt(s / n); }
+function median(a){ const b = Array.from(a).sort((x, y) => x - y); const m = b.length >> 1;
+  return b.length % 2 ? b[m] : (b[m - 1] + b[m]) / 2; }
+
+function butterLowpassSOS(fc, fs, order){
+  const wc = Math.tan(Math.PI * fc / fs), sections = [];
+  for (let k = 0; k < order / 2; k++){
+    const th = Math.PI * (2 * k + 1) / (2 * order) + Math.PI / 2;
+    const re = -Math.cos(th);
+    const w2 = wc * wc, d = 1 + 2 * re * wc + w2;
+    sections.push({b0: w2 / d, b1: 2 * w2 / d, b2: w2 / d,
+                   a1: 2 * (w2 - 1) / d, a2: (1 - 2 * re * wc + w2) / d});
+  }
+  return sections;
+}
+function sosOnce(x, sos){
+  let y = Float64Array.from(x);
+  for (const s of sos){
+    let x1 = 0, x2 = 0, y1 = 0, y2 = 0;
+    const o = new Float64Array(y.length);
+    for (let i = 0; i < y.length; i++){
+      const v = s.b0 * y[i] + s.b1 * x1 + s.b2 * x2 - s.a1 * y1 - s.a2 * y2;
+      x2 = x1; x1 = y[i]; y2 = y1; y1 = v; o[i] = v;
+    }
+    y = o;
+  }
+  return y;
+}
+function filtfilt(x, sos){
+  const n = x.length, pad = Math.min(3 * 2 * sos.length * 2, n - 1);
+  const ext = new Float64Array(n + 2 * pad);
+  for (let i = 0; i < pad; i++){ ext[i] = 2 * x[0] - x[pad - i]; ext[n + pad + i] = 2 * x[n - 1] - x[n - 2 - i]; }
+  ext.set(x, pad);
+  let y = sosOnce(ext, sos);
+  y.reverse();
+  y = sosOnce(y, sos);
+  y.reverse();
+  return y.slice(pad, pad + n);
+}
+
+function fft(re, im){
+  const n = re.length;
+  for (let i = 1, j = 0; i < n; i++){
+    let bit = n >> 1;
+    for (; j & bit; bit >>= 1) j ^= bit;
+    j ^= bit;
+    if (i < j){ let t = re[i]; re[i] = re[j]; re[j] = t; t = im[i]; im[i] = im[j]; im[j] = t; }
+  }
+  for (let len = 2; len <= n; len <<= 1){
+    const ang = -2 * Math.PI / len, wr = Math.cos(ang), wi = Math.sin(ang);
+    for (let i = 0; i < n; i += len){
+      let cr = 1, ci = 0;
+      for (let k = 0; k < len / 2; k++){
+        const ur = re[i + k], ui = im[i + k];
+        const vr = re[i + k + len / 2] * cr - im[i + k + len / 2] * ci;
+        const vi = re[i + k + len / 2] * ci + im[i + k + len / 2] * cr;
+        re[i + k] = ur + vr; im[i + k] = ui + vi;
+        re[i + k + len / 2] = ur - vr; im[i + k + len / 2] = ui - vi;
+        const nr = cr * wr - ci * wi; ci = cr * wi + ci * wr; cr = nr;
+      }
+    }
+  }
+}
+
+// フーリエ振幅（設定は o = {seg, overlap, win, selOn, hi, lo}）
+function winVal(type, i, L){
+  const t = 2 * Math.PI * i / L;
+  if (type === 'hann') return 0.5 - 0.5 * Math.cos(t);
+  if (type === 'hamming') return 0.54 - 0.46 * Math.cos(t);
+  if (type === 'blackman') return 0.42 - 0.5 * Math.cos(t) + 0.08 * Math.cos(2 * t);
+  return 1;
+}
+function fourier(x, fs, o){
+  const n = x.length;
+  const whole = !(o.seg > 0);
+  let L;
+  if (whole){ L = 1; while (L * 2 <= n) L <<= 1; }      // 全長に収まる最大の2のべき乗
+  else { L = o.seg; while (L > n) L >>= 1; }
+  if (L < 64) throw new Error('データが短すぎます。');
+  const step = Math.max(1, Math.round(L * (1 - (o.overlap || 0))));
+  const win = new Float64Array(L);
+  let wsum = 0;
+  for (let i = 0; i < L; i++){ win[i] = whole ? winVal(o.win, i, L) : winVal(o.win, i, L); wsum += win[i]; }
+  if (!(wsum > 0)){ for (let i = 0; i < L; i++) win[i] = 1; wsum = L; }
+
+  let starts = [];
+  if (whole) starts = [0];
+  else for (let s = 0; s + L <= n; s += step) starts.push(s);
+  if (!starts.length) starts = [0];
+  let used = starts;
+  if (o.selOn && starts.length > 1){
+    const rs = starts.map(s => rms(x, s, L));
+    const med = median(rs);
+    const keep = starts.filter((s, i) => rs[i] <= o.hi * med && rs[i] >= o.lo * med);
+    used = keep.length ? keep : starts;
+  }
+
+  const K = L / 2 + 1, amp = new Float64Array(K);
+  for (const s of used){
+    const re = new Float64Array(L), im = new Float64Array(L);
+    for (let i = 0; i < L; i++) re[i] = x[s + i] * win[i];
+    fft(re, im);
+    for (let k = 0; k < K; k++){
+      const sc = (k === 0 || k === K - 1) ? 1 / wsum : 2 / wsum;
+      amp[k] += Math.hypot(re[k], im[k]) * sc;
+    }
+  }
+  for (let k = 0; k < K; k++) amp[k] /= used.length;
+  const f = new Float64Array(K);
+  for (let k = 0; k < K; k++) f[k] = k * fs / L;
+  return {f, amp, nseg: starts.length, nused: used.length, L, whole};
+}
+// 基準 xr と y のクロススペクトル平均から H = Sxy/Sxx（振幅比・位相差・コヒーレンス）
+function csdPair(xr, y, fs, o, smT, smB){
+  const n = Math.min(xr.length, y.length);
+  const whole = !(o.seg > 0);
+  let L;
+  if (whole){ L = 1; while (L * 2 <= n) L <<= 1; }
+  else { L = o.seg; while (L > n) L >>= 1; }
+  if (L < 64) throw new Error('データが短すぎます。');
+  const step = Math.max(1, Math.round(L * (1 - (o.overlap || 0))));
+  const win = new Float64Array(L);
+  for (let i = 0; i < L; i++) win[i] = winVal(o.win, i, L);
+  let starts = [];
+  if (whole) starts = [0];
+  else for (let s = 0; s + L <= n; s += step) starts.push(s);
+  if (!starts.length) starts = [0];
+  let used = starts;
+  if (o.selOn && starts.length > 1){
+    const rs = starts.map(s => rms(xr, s, L));
+    const med = median(rs);
+    const keep = starts.filter((s, i) => rs[i] <= o.hi * med && rs[i] >= o.lo * med);
+    used = keep.length ? keep : starts;
+  }
+  const K = L / 2 + 1;
+  let Sxx = new Float64Array(K), Syy = new Float64Array(K), Cre = new Float64Array(K), Cim = new Float64Array(K);
+  for (const s of used){
+    const ar = new Float64Array(L), ai = new Float64Array(L), br = new Float64Array(L), bi = new Float64Array(L);
+    for (let i = 0; i < L; i++){ ar[i] = xr[s + i] * win[i]; br[i] = y[s + i] * win[i]; }
+    fft(ar, ai); fft(br, bi);
+    for (let k = 0; k < K; k++){
+      Sxx[k] += ar[k] * ar[k] + ai[k] * ai[k];
+      Syy[k] += br[k] * br[k] + bi[k] * bi[k];
+      Cre[k] += ar[k] * br[k] + ai[k] * bi[k];      // Re[conj(X)Y]
+      Cim[k] += ar[k] * bi[k] - ai[k] * br[k];      // Im[conj(X)Y]
+    }
+  }
+  const f = new Float64Array(K);
+  for (let k = 0; k < K; k++) f[k] = k * fs / L;
+  if (smT && smT !== 'none' && smB > 0){
+    Sxx = smoothSpec(f, Sxx, smT, smB); Syy = smoothSpec(f, Syy, smT, smB);
+    Cre = smoothSpec(f, Cre, smT, smB); Cim = smoothSpec(f, Cim, smT, smB);
+  }
+  const amp = new Float64Array(K), phase = new Float64Array(K), coh = new Float64Array(K);
+  for (let k = 0; k < K; k++){
+    const sx = Sxx[k] || 1e-300;
+    amp[k] = Math.hypot(Cre[k], Cim[k]) / sx;
+    phase[k] = Math.atan2(Cim[k], Cre[k]) * 180 / Math.PI;
+    coh[k] = (Cre[k] * Cre[k] + Cim[k] * Cim[k]) / (sx * (Syy[k] || 1e-300));
+  }
+  return {f, amp, phase, coh, nseg: starts.length, nused: used.length, L};
+}
+// 画面の欄からフーリエの条件を読む
+function readFour(){
+  const seg = +$('segIn').value || 0;
+  const hi = parseFloat($('selHi').value), lo = parseFloat($('selLo').value);
+  return {
+    seg,
+    overlap: (+$('ovIn').value || 0) / 100,
+    win: $('winIn').value,
+    selOn: $('selOn').checked && seg > 0,
+    hi: isFinite(hi) && hi > 0 ? hi : 3,
+    lo: isFinite(lo) && lo >= 0 ? lo : 0.1
+  };
+}
+// 加速度の単位から，各量の単位を決める
+const UNITS = {
+  cm:   {acc: 'cm/s<tspan baseline-shift="super" font-size="10">2</tspan>', vel: 'cm/s', dis: 'cm', amp: 'cm/s<tspan baseline-shift="super" font-size="10">2</tspan>', pSv: 'cm/s', pSa: 'cm/s<tspan baseline-shift="super" font-size="10">2</tspan>', Sd: 'cm'},
+  m:    {acc: 'm/s<tspan baseline-shift="super" font-size="10">2</tspan>',  vel: 'm/s',  dis: 'm',  amp: 'm/s<tspan baseline-shift="super" font-size="10">2</tspan>',  pSv: 'm/s',  pSa: 'm/s<tspan baseline-shift="super" font-size="10">2</tspan>',  Sd: 'm'},
+  g:    {acc: 'g', vel: 'g&#183;s', dis: 'g&#183;s<tspan baseline-shift="super" font-size="10">2</tspan>', amp: 'g', pSv: 'g&#183;s', pSa: 'g', Sd: 'g&#183;s<tspan baseline-shift="super" font-size="10">2</tspan>'},
+  none: {acc: '', vel: '', dis: '', amp: '', pSv: '', pSa: '', Sd: ''}
+};
+const UJA = {cm: {acc: 'cm/s²', vel: 'cm/s', dis: 'cm', amp: 'cm/s²', pSv: 'cm/s', pSa: 'cm/s²', Sd: 'cm'},
+             m: {acc: 'm/s²', vel: 'm/s', dis: 'm', amp: 'm/s²', pSv: 'm/s', pSa: 'm/s²', Sd: 'm'},
+             g: {acc: 'g', vel: 'g·s', dis: 'g·s²', amp: 'g', pSv: 'g·s', pSa: 'g', Sd: 'g·s²'},
+             none: {acc: '入力の単位', vel: '入力の単位×秒', dis: '入力の単位×秒²', amp: '入力の単位', pSv: '入力の単位×秒', pSa: '入力の単位', Sd: '入力の単位×秒²'}};
+const U = k => (UNITS[$('unitIn').value] || UNITS.none)[k];
+const UJ = k => (UJA[$('unitIn').value] || UJA.none)[k];
+const withU = (lab, k) => { const u = U(k); return u ? lab + ' (' + u + ')' : lab; };
+const WINJA = {none: '窓なし（矩形）', hann: 'Hann窓', hamming: 'Hamming窓', blackman: 'Blackman窓'};
+const OVJA = {0: '重なりなし', 25: '1/4ずつ重ね', 50: '半分ずつ重ね', 75: '3/4ずつ重ね'};
+
+function peaks(f, a, n){
+  const c = [];
+  for (let i = 1; i < a.length - 1; i++) if (a[i] > a[i - 1] && a[i] >= a[i + 1]) c.push(i);
+  c.sort((p, q) => a[q] - a[p]);
+  const out = [], minGap = 0.2;
+  for (const i of c){
+    if (out.every(j => Math.abs(f[i] - f[j]) > minGap)) out.push(i);
+    if (out.length >= n) break;
+  }
+  return out;
+}
+
+function matExp(M, n){
+  let nrm = 0;
+  for (let i = 0; i < n * n; i++) nrm = Math.max(nrm, Math.abs(M[i]));
+  const sc = nrm > 0.5 ? Math.max(0, Math.ceil(Math.log2(nrm)) + 1) : 0;
+  const A = M.map(v => v / Math.pow(2, sc));
+  const mul = (P, Q) => {
+    const R = new Float64Array(n * n);
+    for (let i = 0; i < n; i++)
+      for (let k = 0; k < n; k++){
+        const p = P[i * n + k];
+        if (p === 0) continue;
+        for (let j = 0; j < n; j++) R[i * n + j] += p * Q[k * n + j];
+      }
+    return R;
+  };
+  let R = new Float64Array(n * n), T = new Float64Array(n * n);
+  for (let i = 0; i < n; i++){ R[i * n + i] = 1; T[i * n + i] = 1; }
+  for (let k = 1; k <= 30; k++){
+    T = mul(T, A);
+    for (let i = 0; i < n * n; i++) T[i] /= k;
+    for (let i = 0; i < n * n; i++) R[i] += T[i];
+  }
+  for (let i = 0; i < sc; i++) R = mul(R, R);
+  return R;
+}
+
+function sdofCoeff(w, h, dt){
+  const M = new Float64Array(16);
+  M[1] = dt; M[4] = -w * w * dt; M[5] = -2 * h * w * dt; M[6] = dt; M[11] = dt;
+  const E = matExp(M, 4);
+  return {
+    Ad: [E[0], E[1], E[4], E[5]],
+    B1: [E[2] - E[3] / dt, E[6] - E[7] / dt],
+    B2: [E[3] / dt, E[7] / dt]
+  };
+}
+
+// 変位応答の最大値 Sd（accs が2つなら，時刻ごとのベクトル和の最大＝水平合成）
+function sdSpectrum(accs, dt){
+  const T = [], sd = [];
+  for (let i = 0; i < NT; i++) T.push(TLOG ? TMIN * Math.pow(TMAX / TMIN, i / (NT - 1)) : TMIN + (TMAX - TMIN) * i / (NT - 1));
+  const n0 = Math.min(...accs.map(a => a.length));
+  for (const Ti of T){
+    const m = Math.max(1, Math.ceil(dt / (Ti / 20)));
+    let h = dt, list = accs;
+    if (m > 1){
+      h = dt / m;
+      const nn = (n0 - 1) * m + 1;
+      list = accs.map(acc => {
+        const a = new Float64Array(nn);
+        for (let i = 0; i < nn; i++){
+          const p = i / m, i0 = Math.min(Math.floor(p), acc.length - 2);
+          a[i] = acc[i0] + (p - i0) * (acc[i0 + 1] - acc[i0]);
+        }
+        return a;
+      });
+    }
+    const w = 2 * Math.PI / Ti;
+    const co = sdofCoeff(w, DAMP, h);
+    const u = new Float64Array(list.length), v = new Float64Array(list.length);
+    let mx = 0;
+    const len = Math.min(...list.map(a => a.length));
+    for (let i = 0; i < len - 1; i++){
+      let q = 0;
+      for (let k = 0; k < list.length; k++){
+        const p0 = -list[k][i], p1 = -list[k][i + 1];
+        const un = co.Ad[0] * u[k] + co.Ad[1] * v[k] + co.B1[0] * p0 + co.B2[0] * p1;
+        v[k] = co.Ad[2] * u[k] + co.Ad[3] * v[k] + co.B1[1] * p0 + co.B2[1] * p1;
+        u[k] = un; q += un * un;
+      }
+      if (q > mx) mx = q;
+    }
+    sd.push(Math.sqrt(mx));
+  }
+  return {T, sd};
+}
+// Sd から選んだ量へ（pSv = ωSd，pSa = ω²Sd）
+function respConv(T, sd, q){
+  return sd.map((v, i) => { const w = 2 * Math.PI / T[i]; return q === 'Sd' ? v : q === 'pSa' ? w * w * v : w * v; });
+}
+// フーリエ振幅の平滑化（周波数軸は等間隔）
+function smoothSpec(f, a, type, bw){
+  if (type === 'none' || !(bw > 0) || f.length < 5) return a;
+  const df = f[1] - f[0];
+  if (!(df > 0)) return a;
+  const w = [];
+  let half;
+  if (type === 'parzen'){
+    // Parzen窓：W(f) = 0.75u{sin(πuf/2)/(πuf/2)}^4，帯域幅 b = 280/(151u)
+    const u = 280 / (151 * bw);
+    half = Math.max(1, Math.round(4 / (u * df)));
+    for (let k = -half; k <= half; k++){
+      const x = Math.PI * u * k * df / 2;
+      const sn = k === 0 ? 1 : Math.sin(x) / x;
+      w.push(0.75 * u * Math.pow(sn, 4));
+    }
+  } else {
+    // Hann窓：|f| ≤ b で 1 + cos(πf/b)
+    half = Math.max(1, Math.round(bw / df));
+    for (let k = -half; k <= half; k++) w.push(1 + Math.cos(Math.PI * k * df / bw));
+  }
+  const n = a.length, out = new Float64Array(n);
+  for (let i = 0; i < n; i++){
+    let sm = 0, sw = 0;
+    for (let k = -half; k <= half; k++){
+      const j = i + k;
+      if (j < 0 || j >= n) continue;
+      sm += w[k + half] * a[j]; sw += w[k + half];
+    }
+    out[i] = sw > 0 ? sm / sw : a[i];
+  }
+  return out;
+}
+
+function selected(){
+  return Array.from(document.querySelectorAll('#chs input:checked')).map(e => +e.value);
+}
+
+$('run').onclick = () => {
+  const fs = +$('fs').value;
+  const sc = +$('scale').value;
+  const ch = selected();
+  if (!(fs > 0)) return status('サンプリング周波数を入力してください。', true);
+  if (!isFinite(sc) || sc === 0) return status('倍率に0以外の数値を入力してください。', true);
+  if (!ch.length) return status('チャンネルを1つ以上選んでください。', true);
+  if (mode === 'resp'){
+    const h = parseFloat($('hIn').value) / 100, t0 = parseFloat($('tminIn').value), t1 = parseFloat($('tmaxIn').value), n = Math.round(+$('ntIn').value);
+    if (!(h >= 0 && h < 1)) return status('減衰定数は 0〜99 % で入力してください。', true);
+    if (!(t0 > 0 && t1 > t0)) return status('周期の範囲を正しく入力してください（0 < Tmin < Tmax）。', true);
+    if (!(n >= 10 && n <= 2000)) return status('点数は 10〜2000 で入力してください。', true);
+    DAMP = h; TMIN = t0; TMAX = t1; NT = n;
+    TLOG = (document.querySelector('input[name=tsp]:checked') || {}).value === 'log';
+    fixedNotes();
+  }
+  status('計算しています...');
+  setTimeout(() => { try { compute(fs, ch, sc); } catch (e) { status(e.message, true); } }, 20);
+};
+
+function compute(fs, ch, scale){
+  const F = readFilt(fs);
+  if (F.err) return status(F.err, true);
+  const sos = F.sos, noLP = !sos;
+  const lowered = F.lowered;
+  const series = [], rows = [];
+  let msg = '';
+  const q = (mode === 'resp' && $('triOn').checked) ? 'pSv' : $('respQ').value;
+  const FOUR = readFour();
+  const smT = $('smType').value, smB = parseFloat($('smBw').value);
+  const dm = $('demeanOn').checked;
+  const prep = c => {
+    const g = raw[c], mu = dm ? mean(g) : 0;
+    const x = new Float64Array(g.length);
+    for (let i = 0; i < g.length; i++) x[i] = (g[i] - mu) * scale;
+    return sos ? FILT.apply(x, sos, F.zero, F.pad) : x;
+  };
+
+  // --- 時刻歴波形 ---
+  if (mode === 'wave'){
+    const chans = ch.map(c => {
+      const a = prep(c);
+      return {name: labels[c], acc: a, vel: toQuantity(a, 'vel', fs, F), dis: toQuantity(a, 'dis', fs, F)};
+    });
+    const n = Math.min(...chans.map(c => c.acc.length));
+    let t0 = parseFloat($('wT0').value), t1 = parseFloat($('wT1').value);
+    if (!isFinite(t0)) t0 = 0;
+    if (!isFinite(t1) || t1 <= t0) t1 = (n - 1) / fs;
+    orbit = null;
+    if ($('orbOn').checked && $('orbPair').value){
+      const v = $('orbPair').value.split(',').map(Number);
+      const q2 = $('orbQ').value;
+      const ns = toQuantity(prep(v[0]), q2, fs, F), ew = toQuantity(prep(v[1]), q2, fs, F);
+      const nn = Math.min(ns.length, ew.length);
+      orbit = {ns, ew, i0: Math.max(0, Math.round(t0 * fs)), i1: Math.min(nn - 1, Math.round(t1 * fs)), fs, q: q2,
+               name: $('orbPair').selectedOptions[0].textContent};
+    }
+    result = {kind: 'wave', chans, fs, n, t0, t1, rows: []};
+    draw();
+    return status(chans.length + ' 波形の加速度・速度・変位を描きました（' + t0.toFixed(2) + '〜' + t1.toFixed(2) + ' 秒）。'
+      + (orbit ? 'オービットは ' + orbit.name + ' の' + ({acc: '加速度', vel: '速度', dis: '変位'})[orbit.q] + 'です。' : '') + '　' + F.label);
+  }
+
+  // --- 基準との比較（伝達関数）：振幅スペクトルはそのまま描き，比・位相差・コヒーレンスを足す ---
+  if (mode === 'fourier' && $('refCh').value !== ''){
+    const ir = +$('refCh').value;
+    const list = ch.includes(ir) ? ch : [ir].concat(ch);
+    const xr = prep(ir);
+    const spec = [], rat = [], ph = [], coh = [];
+    const rows2 = [];
+    let nu = 0, ns0 = 0, msg2 = '';
+    for (const c of list){
+      const y = prep(c);
+      const r0 = fourier(y, fs, FOUR);
+      const a0 = smoothSpec(r0.f, r0.amp, smT, smB);
+      spec.push({name: labels[c], x: r0.f, y: a0});
+      peaks(r0.f, a0, 5).forEach((i, k) => rows2.push([labels[c], k + 1, r0.f[i], a0[i], r0.f[i] > 0 ? 1 / r0.f[i] : null]));
+      msg2 = (r0.whole ? '全長 ' + r0.L + ' 点で1回FFT（' + WINJA[FOUR.win] + '）'
+        : r0.nused + ' / ' + r0.nseg + ' 区間を使用（' + r0.L + '点ごと，' + OVJA[Math.round(FOUR.overlap * 100)] + '，' + WINJA[FOUR.win] + '）');
+      if (c === ir) continue;
+      const r = csdPair(xr, y, fs, FOUR, smT, smB);
+      nu = r.nused; ns0 = r.nseg;
+      const nm = labels[c] + ' / ' + labels[ir];
+      rat.push({name: nm, x: r.f, y: r.amp});
+      ph.push({name: nm, x: r.f, y: r.phase});
+      coh.push({name: nm, x: r.f, y: r.coh});
+    }
+    if (!rat.length) return status('基準以外のチャンネルも選んでください。', true);
+    const xmax = (noLP || F.kind === 'hp') ? fs / 2 : Math.min((F.kind === 'bp' ? F.f2 : F.f1) * 1.2, fs / 2);
+    result = {kind: 'cmp', series: spec, xlab: 'Frequency (Hz)', ylab: withU('Fourier amplitude', 'amp'), xmax, rows: rows2,
+      p2: {series: rat, xlab: 'Frequency (Hz)', ylab: 'Amplitude ratio', xmax},
+      p3: {series: ph, xlab: 'Frequency (Hz)', ylab: 'Phase (deg)', xmax},
+      p4: $('cohOn').checked ? {series: coh, xlab: 'Frequency (Hz)', ylab: 'Coherence', xmax} : null};
+    draw();
+    return status(msg2 + '，基準 ' + labels[ir] + ' との伝達関数（' + nu + ' / ' + ns0 + ' 区間，H = Sxy/Sxx）　' + F.label);
+  }
+
+  for (const c of ch){
+    const y = prep(c);
+    if (mode === 'fourier'){
+      const r = fourier(y, fs, FOUR);
+      const amp = smoothSpec(r.f, r.amp, smT, smB);
+      series.push({name: labels[c], x: r.f, y: amp});
+      peaks(r.f, amp, 5).forEach((i, k) => rows.push([labels[c], k + 1, r.f[i], amp[i], r.f[i] > 0 ? 1 / r.f[i] : null]));
+      msg = (r.whole ? '全長 ' + r.L + ' 点で1回FFT（' + WINJA[FOUR.win] + '）'
+        : r.nused + ' / ' + r.nseg + ' 区間を使用（' + r.L + '点ごと，' + OVJA[Math.round(FOUR.overlap * 100)] + '，' + WINJA[FOUR.win] + '）')
+        + (smT !== 'none' && smB > 0 ? '，' + (smT === 'parzen' ? 'Parzen窓' : 'Hann窓') + ' ' + smB + ' Hz で平滑化' : '');
+    } else {
+      const r = sdSpectrum([y], 1 / fs);
+      const yy = respConv(r.T, r.sd, q);
+      series.push({name: labels[c], x: r.T, y: yy});
+      peaks(r.T, yy, 5).forEach((i, k) => rows.push([labels[c], k + 1, r.T[i], yy[i], r.T[i] > 0 ? 1 / r.T[i] : null]));
+      msg = '減衰定数 h = ' + (+(DAMP * 100).toPrecision(4)) + ' %，周期 ' + TMIN + '〜' + TMAX + ' 秒（' + (TLOG ? '対数等間隔' : '等間隔') + ' ' + NT + ' 点）';
+    }
+  }
+
+  // 水平2成分の合成（応答スペクトルのみ）
+  let nH = 0;
+  if (mode === 'resp' && $('combH').checked){
+    for (const pr of pairsOf(ch)){
+      const r = sdSpectrum([prep(pr.ns), prep(pr.ew)], 1 / fs);
+      const yy = respConv(r.T, r.sd, q);
+      const nm = pr.base + ' H';
+      series.push({name: nm, x: r.T, y: yy});
+      peaks(r.T, yy, 5).forEach((i, k) => rows.push([nm, k + 1, r.T[i], yy[i], r.T[i] > 0 ? 1 / r.T[i] : null]));
+      nH++;
+    }
+    if (!nH) msg += '　（NS・EWの組が見つからないので合成は作っていません）';
+  }
+
+  result = {
+    kind: (mode === 'resp' && $('triOn').checked) ? 'tri' : 'xy',
+    series,
+    xlab: mode === 'fourier' ? 'Frequency (Hz)' : 'Period (s)',
+    ylab: mode === 'fourier' ? withU('Fourier amplitude', 'amp') : withU(q, q),
+    xmax: mode === 'fourier' ? ((noLP || F.kind === 'hp') ? fs / 2 : Math.min((F.kind === 'bp' ? F.f2 : F.f1) * 1.2, fs / 2)) : TMAX,
+    rows
+  };
+  draw();
+  status(msg + '　' + F.label + (lowered ? '（ナイキストに合わせて下げました）' : ''));
+}
+
+// 観測点コードが同じ NS・EW の組を探す（ch は選んだチャンネル番号）
+function pairsOf(ch){
+  const base = i => labels[i].replace(/\s+(NS|EW|UD)$/i, '');
+  const comp = i => (labels[i].match(/\s+(NS|EW|UD)$/i) || [])[1];
+  const map = new Map();
+  for (const c of ch){
+    const cp = comp(c);
+    if (!cp) continue;
+    const b = base(c);
+    if (!map.has(b)) map.set(b, {});
+    map.get(b)[cp.toUpperCase()] = c;
+  }
+  const out = [];
+  for (const [b, o] of map) if (o.NS != null && o.EW != null) out.push({base: b, ns: o.NS, ew: o.EW});
+  return out;
+}
+
+/* ===== NS–EWのオービット ===== */
+let orbit = null;
+function integ(y, dt){
+  const o = new Float64Array(y.length);
+  for (let i = 1; i < y.length; i++) o[i] = o[i - 1] + (y[i - 1] + y[i]) * dt / 2;
+  return o;
+}
+function refreshPairs(){
+  const sel = $('orbPair'), keep = sel.value;
+  const all = labels.map((l, i) => i);
+  const prs = pairsOf(all);
+  sel.innerHTML = prs.map(p => '<option value="' + p.ns + ',' + p.ew + '">' + p.base + '</option>').join('');
+  if (keep && [...sel.options].some(o => o.value === keep)) sel.value = keep;
+  $('orbRow').classList.toggle('hidden', !prs.length);
+  // 基準の波形の一覧も作り直す
+  const rc = $('refCh'), kr = rc.value;
+  rc.innerHTML = '<option value="">なし（振幅だけを描く）</option>'
+    + labels.map((l, i) => '<option value="' + i + '">' + l + '</option>').join('');
+  if (kr && [...rc.options].some(o => o.value === kr)) rc.value = kr;
+}
+// 加速度から，選んだ量の時刻歴を作る（積分のたびに同じフィルターをかけ直す）
+function toQuantity(x, q, fs, F){
+  if (q === 'acc') return x;
+  let y = integ(x, 1 / fs);
+  if (F.sos) y = FILT.apply(y, F.sos, F.zero, F.pad);
+  if (q === 'vel') return y;
+  let z = integ(y, 1 / fs);
+  if (F.sos) z = FILT.apply(z, F.sos, F.zero, F.pad);
+  return z;
+}
+
+// 軸の手動指定（空欄は自動）
+function axRange(pre, auto, log){
+  const e0 = $(pre + '0'), e1 = $(pre + '1');
+  let lo = e0 ? parseFloat(e0.value) : NaN, hi = e1 ? parseFloat(e1.value) : NaN;
+  if (!isFinite(lo)) lo = auto[0];
+  if (!isFinite(hi)) hi = auto[1];
+  if (log && !(lo > 0)) lo = auto[0] > 0 ? auto[0] : 1e-3;
+  if (!(hi > lo)){ lo = auto[0]; hi = auto[1]; }
+  return [lo, hi];
+}
+// ===== 共通の描画（折れ線） =====
+function plotStyle(){
+  const css = getComputedStyle(document.body);
+  return {ink: css.getPropertyValue('--ink').trim(), ink2: css.getPropertyValue('--ink-2').trim(),
+          rule: css.getPropertyValue('--rule').trim(),
+          F: 'font-family="Arial, Helvetica, sans-serif" font-style="italic"'};
+}
+const lg10 = Math.log10;
+const d1 = v => Math.pow(10, Math.floor(lg10(v))), d2 = v => Math.pow(10, Math.ceil(lg10(v)));
+const linT = (lo, hi, n) => { const raw = (hi - lo || 1) / (n || 8), mag = Math.pow(10, Math.floor(lg10(raw)));
+    const c = [1, 2, 5, 10].map(k => k * mag).find(k => k >= raw), o = [];
+    for (let v = Math.ceil(lo / c - 1e-9) * c; v <= hi + 1e-9 * c; v += c) o.push({v: +v.toPrecision(10), major: true});
+    return o; };
+const logT = (lo, hi) => { const o = [];
+    for (let e = Math.floor(lg10(lo)); e <= Math.ceil(lg10(hi)); e++)
+      for (let k = 1; k <= 9; k++){ const v = k * Math.pow(10, e);
+        if (v >= lo * (1 - 1e-9) && v <= hi * (1 + 1e-9)) o.push({v: +v.toPrecision(12), major: k === 1}); }
+    return o; };
+const fmtV = v => String(+v.toPrecision(4));
+function txtEl(x, y, str, anchor, size, fill, st, extra){
+  return '<text x="' + x + '" y="' + y + '" text-anchor="' + anchor + '" font-size="' + size + '" fill="' + fill + '" ' + st.F + (extra || '') + '>' + str + '</text>';
+}
+// res: {series, xlab, ylab, xmax, rows}  opt: {svgId, useAxis, xr, yr, xlog, ylog, H, marks}
+function drawXY(res, opt){
+  const st = plotStyle();
+  const H = opt.H || 420, m = {l: 72, r: 20, t: 18, b: 56}, W = figW(860, H, m);
+  const iw = W - m.l - m.r, ih = H - m.t - m.b;
+  const xlog = opt.xlog != null ? opt.xlog : $('pXL').value === 'log';
+  const ylog = opt.ylog != null ? opt.ylog : $('pYL').value === 'log';
+  let ymax = 0, ymin = Infinity, xpos = Infinity, ypos = Infinity;
+  for (const s of res.series)
+    for (let i = 0; i < s.x.length; i++){
+      if (s.x[i] > res.xmax) break;
+      if (s.x[i] > 0 && s.x[i] < xpos) xpos = s.x[i];
+      if (s.y[i] > ymax) ymax = s.y[i];
+      if (s.y[i] < ymin) ymin = s.y[i];
+      if (s.y[i] > 0 && s.y[i] < ypos) ypos = s.y[i];
+    }
+  ymax = ymax > 0 ? ymax * 1.1 : 1;
+  const xa = xlog ? [d1(isFinite(xpos) ? xpos : 0.01), d2(res.xmax)] : [0, res.xmax];
+  const ya = opt.yr ? opt.yr
+    : ylog ? [d1(Math.max(isFinite(ypos) ? ypos : ymax / 1e3, ymax / 1e3)), d2(ymax)]
+    : [Math.min(0, ymin), ymax];
+  const xr = opt.xr ? opt.xr : (opt.useAxis ? axRange('pX', xa, xlog) : xa);
+  const yr = opt.yr ? opt.yr : (opt.useAxis ? axRange('pY', ya, ylog) : ya);
+  const lx = [lg10(xr[0]), lg10(xr[1])], ly = [lg10(yr[0]), lg10(yr[1])];
+  const X = xlog ? v => m.l + iw * (lg10(v) - lx[0]) / (lx[1] - lx[0]) : v => m.l + iw * (v - xr[0]) / (xr[1] - xr[0]);
+  const Y = ylog ? v => m.t + ih * (1 - (lg10(v) - ly[0]) / (ly[1] - ly[0])) : v => m.t + ih * (1 - (v - yr[0]) / (yr[1] - yr[0]));
+  const inX = v => v >= xr[0] && v <= xr[1] && (!xlog || v > 0);
+  const clampY = v => Math.min(Math.max(v, yr[0]), yr[1]);
+
+  let g = '<rect x="' + m.l + '" y="' + m.t + '" width="' + iw + '" height="' + ih + '" fill="none" stroke="' + st.rule + '"/>';
+  for (const t of (xlog ? logT(xr[0], xr[1]) : linT(xr[0], xr[1]))){
+    g += '<line x1="' + X(t.v) + '" y1="' + m.t + '" x2="' + X(t.v) + '" y2="' + (m.t + ih) + '" stroke="' + (t.major ? st.rule : '#eceef0') + '"' + (t.major ? ' stroke-dasharray="2 3"' : '') + '/>';
+    if (t.major) g += txtEl(X(t.v), m.t + ih + 20, fmtV(t.v), 'middle', 13, st.ink2, st);
+  }
+  for (const t of (ylog ? logT(yr[0], yr[1]) : linT(yr[0], yr[1], 6))){
+    g += '<line x1="' + m.l + '" y1="' + Y(t.v) + '" x2="' + (m.l + iw) + '" y2="' + Y(t.v) + '" stroke="' + (t.major ? st.rule : '#eceef0') + '"' + (t.major ? ' stroke-dasharray="2 3"' : '') + '/>';
+    if (t.major) g += txtEl(m.l - 8, Y(t.v) + 4, fmtV(t.v), 'end', 13, st.ink2, st);
+  }
+  g += txtEl(m.l + iw / 2, H - 12, res.xlab, 'middle', 14, st.ink, st)
+    + txtEl(18, m.t + ih / 2, res.ylab, 'middle', 14, st.ink, st, ' transform="rotate(-90 18 ' + (m.t + ih / 2) + ')"');
+
+  res.series.forEach((s, si) => {
+    let d = '', on = false;
+    for (let i = 0; i < s.x.length; i++){
+      if (s.x[i] > xr[1]) break;
+      if (!inX(s.x[i])){ on = false; continue; }
+      const yv = ylog && !(s.y[i] > 0) ? yr[0] : s.y[i];
+      d += (on ? 'L' : 'M') + X(s.x[i]).toFixed(1) + ' ' + Y(clampY(yv)).toFixed(1) + ' ';
+      on = true;
+    }
+    const da = DASHES[si % DASHES.length];
+    g += '<path d="' + d + '" fill="none" stroke="' + COLORS[si % COLORS.length] + '" stroke-width="1.2"' + (da ? ' stroke-dasharray="' + da + '"' : '') + '/>';
+  });
+  const pk = $('pkMark') ? $('pkMark').value : 'none';
+  if (opt.marks && res.rows && pk !== 'none') for (const r of res.rows){
+    if (pk !== 'five' && r[1] !== 1) continue;
+    const si = res.series.findIndex(s => s.name === r[0]);
+    if (si < 0 || !inX(r[2])) continue;
+    const yy = Y(clampY(ylog && !(r[3] > 0) ? yr[0] : r[3]));
+    g += '<circle cx="' + X(r[2]) + '" cy="' + yy + '" r="3" fill="none" stroke="' + COLORS[si % COLORS.length] + '"/>';
+    if (r[1] === 1 && (pk === 'one5' || pk === 'five'))
+      g += txtEl(X(r[2]), yy - 9, r[2].toFixed(2) + (mode === 'fourier' ? ' Hz' : ' s'), 'middle', 12, COLORS[si % COLORS.length], st);
+  }
+  const svg = $(opt.svgId);
+  svg.setAttribute('viewBox', '0 0 ' + W + ' ' + H);
+  svg.innerHTML = g;
+}
+
+// ===== トリパータイト =====
+function drawTri(){
+  const st = plotStyle();
+  const H = 560, m = {l: 76, r: 26, t: 26, b: 58}, W = figW(760, H, m);
+  const iw = W - m.l - m.r, ih = H - m.t - m.b;
+  let ymax = 0, ypos = Infinity;
+  for (const s of result.series) for (let i = 0; i < s.y.length; i++){
+    if (s.y[i] > ymax) ymax = s.y[i];
+    if (s.y[i] > 0 && s.y[i] < ypos) ypos = s.y[i];
+  }
+  if (!(ymax > 0)){ ymax = 100; ypos = 1; }
+  const xr = axRange('pX', [d1(TMIN), d2(TMAX)], true);
+  const yr = axRange('pY', [d1(Math.max(ypos, ymax / 1e3)), d2(ymax)], true);
+  const lx = [lg10(xr[0]), lg10(xr[1])], ly = [lg10(yr[0]), lg10(yr[1])];
+  const X = v => m.l + iw * (lg10(v) - lx[0]) / (lx[1] - lx[0]);
+  const Y = v => m.t + ih * (1 - (lg10(v) - ly[0]) / (ly[1] - ly[0]));
+  let g = '<rect x="' + m.l + '" y="' + m.t + '" width="' + iw + '" height="' + ih + '" fill="none" stroke="' + st.rule + '"/>';
+  // 斜めの目盛り：Sd 一定（pSv = 2πSd/T）と pSa 一定（pSv = pSa·T/2π）
+  const seg = (fy, lab, color, side) => {
+    // 2点（xr[0], xr[1]）を結ぶ直線を枠内に切り取る（対数座標で直線）
+    const p0 = [lg10(xr[0]), lg10(fy(xr[0]))], p1 = [lg10(xr[1]), lg10(fy(xr[1]))];
+    const dx = p1[0] - p0[0], dy = p1[1] - p0[1];
+    let t0 = 0, t1 = 1;
+    if (dy === 0){ if (p0[1] < ly[0] || p0[1] > ly[1]) return ''; }
+    else {
+      const ta = (ly[0] - p0[1]) / dy, tb = (ly[1] - p0[1]) / dy;
+      t0 = Math.max(0, Math.min(ta, tb)); t1 = Math.min(1, Math.max(ta, tb));
+      if (t1 <= t0) return '';
+    }
+    const a = [p0[0] + dx * t0, p0[1] + dy * t0], b = [p0[0] + dx * t1, p0[1] + dy * t1];
+    const P = q => [m.l + iw * (q[0] - lx[0]) / (lx[1] - lx[0]), m.t + ih * (1 - (q[1] - ly[0]) / (ly[1] - ly[0]))];
+    const A = P(a), B = P(b);
+    if (Math.hypot(A[0] - B[0], A[1] - B[1]) < 30) return '';
+    let out = '<line x1="' + A[0].toFixed(1) + '" y1="' + A[1].toFixed(1) + '" x2="' + B[0].toFixed(1) + '" y2="' + B[1].toFixed(1) + '" stroke="' + color + '" stroke-width="0.7" stroke-dasharray="3 3"/>';
+    const L = side === 'up' ? B : A;   // ラベルは端に置く
+    out += txtEl(L[0] + (side === 'up' ? -6 : 6), L[1] + (side === 'up' ? 12 : -5), lab, side === 'up' ? 'end' : 'start', 11, color, st);
+    return out;
+  };
+  const decades = (lo, hi) => { const o = []; for (let e = Math.floor(lg10(lo)); e <= Math.ceil(lg10(hi)); e++) o.push(Math.pow(10, e)); return o; };
+  // Sd の範囲：pSv = 2πSd/T → Sd = pSv·T/2π
+  const sdLo = yr[0] * xr[0] / (2 * Math.PI), sdHi = yr[1] * xr[1] / (2 * Math.PI);
+  for (const sd of decades(sdLo, sdHi)) g += seg(T => 2 * Math.PI * sd / T, 'Sd = ' + fmtV(sd) + (UJ('Sd') && $('unitIn').value !== 'none' ? ' ' + UJ('Sd') : ''), '#8d949c', 'up');
+  const saLo = yr[0] * 2 * Math.PI / xr[1], saHi = yr[1] * 2 * Math.PI / xr[0];
+  for (const sa of decades(saLo, saHi)) g += seg(T => sa * T / (2 * Math.PI), 'pSa = ' + fmtV(sa) + ($('unitIn').value !== 'none' ? ' ' + UJ('pSa') : ''), '#b9bec4', 'down');
+  for (const t of logT(xr[0], xr[1])){
+    g += '<line x1="' + X(t.v) + '" y1="' + m.t + '" x2="' + X(t.v) + '" y2="' + (m.t + ih) + '" stroke="' + (t.major ? st.rule : '#eceef0') + '"' + (t.major ? ' stroke-dasharray="2 3"' : '') + '/>';
+    if (t.major) g += txtEl(X(t.v), m.t + ih + 20, fmtV(t.v), 'middle', 13, st.ink2, st);
+  }
+  for (const t of logT(yr[0], yr[1])){
+    g += '<line x1="' + m.l + '" y1="' + Y(t.v) + '" x2="' + (m.l + iw) + '" y2="' + Y(t.v) + '" stroke="' + (t.major ? st.rule : '#eceef0') + '"' + (t.major ? ' stroke-dasharray="2 3"' : '') + '/>';
+    if (t.major) g += txtEl(m.l - 8, Y(t.v) + 4, fmtV(t.v), 'end', 13, st.ink2, st);
+  }
+  result.series.forEach((s, si) => {
+    let d = '', on = false;
+    for (let i = 0; i < s.x.length; i++){
+      if (s.x[i] < xr[0] || s.x[i] > xr[1]){ on = false; continue; }
+      const v = Math.min(Math.max(s.y[i], yr[0]), yr[1]);
+      d += (on ? 'L' : 'M') + X(s.x[i]).toFixed(1) + ' ' + Y(v).toFixed(1) + ' ';
+      on = true;
+    }
+    const da = DASHES[si % DASHES.length];
+    g += '<path d="' + d + '" fill="none" stroke="' + COLORS[si % COLORS.length] + '" stroke-width="1.3"' + (da ? ' stroke-dasharray="' + da + '"' : '') + '/>';
+  });
+  g += txtEl(m.l + iw / 2, H - 12, 'Period (s)', 'middle', 14, st.ink, st)
+    + txtEl(18, m.t + ih / 2, withU('pSv', 'pSv'), 'middle', 14, st.ink, st, ' transform="rotate(-90 18 ' + (m.t + ih / 2) + ')"')
+    + txtEl(m.l + 8, m.t + 16, 'h = ' + (+(DAMP * 100).toPrecision(4)) + '%', 'start', 13, st.ink, st);
+  const svg = $('plot');
+  svg.setAttribute('viewBox', '0 0 ' + W + ' ' + H);
+  svg.innerHTML = g;
+}
+
+// ===== 時刻歴（加速度・速度・変位の3段） =====
+function drawWave(){
+  const st = plotStyle();
+  const H = 660, m = {l: 76, r: 20, t: 14, b: 52}, W = figW(860, H, m), gap = 16;
+  const iw = W - m.l - m.r, ih = (H - m.t - m.b - 2 * gap) / 3;
+  const fs = result.fs;
+  const xa = [result.t0, result.t1];
+  const xr = axRange('pX', xa, false);
+  const X = v => m.l + iw * (v - xr[0]) / (xr[1] - xr[0]);
+  const keys = [{k: 'acc', lab: withU('Acceleration', 'acc')}, {k: 'vel', lab: withU('Velocity', 'vel')}, {k: 'dis', lab: withU('Displacement', 'dis')}];
+  let g = '', defs = '';
+  keys.forEach((kk, r) => {
+    const top = m.t + r * (ih + gap);
+    let ym = 0;
+    const i0 = Math.max(0, Math.floor(xr[0] * fs)), i1 = Math.min(result.n - 1, Math.ceil(xr[1] * fs));
+    for (const c of result.chans) for (let i = i0; i <= i1; i++){ const a = Math.abs(c[kk.k][i]); if (a > ym) ym = a; }
+    ym = ym > 0 ? ym * 1.08 : 1;
+    const Y = v => top + ih * (1 - (v + ym) / (2 * ym));
+    g += '<rect x="' + m.l + '" y="' + top + '" width="' + iw + '" height="' + ih + '" fill="none" stroke="' + st.rule + '"/>';
+    for (const t of linT(-ym, ym, 4)){
+      g += '<line x1="' + m.l + '" y1="' + Y(t.v) + '" x2="' + (m.l + iw) + '" y2="' + Y(t.v) + '" stroke="' + (t.v === 0 ? st.ink2 : st.rule) + '"' + (t.v === 0 ? '' : ' stroke-dasharray="2 3"') + '/>';
+      g += txtEl(m.l - 8, Y(t.v) + 4, fmtV(t.v), 'end', 12.5, st.ink2, st);
+    }
+    for (const t of linT(xr[0], xr[1])){
+      g += '<line x1="' + X(t.v) + '" y1="' + top + '" x2="' + X(t.v) + '" y2="' + (top + ih) + '" stroke="' + st.rule + '" stroke-dasharray="2 3"/>';
+      if (r === 2) g += txtEl(X(t.v), top + ih + 19, fmtV(t.v), 'middle', 12.5, st.ink2, st);
+    }
+    defs += '<clipPath id="wc' + r + '"><rect x="' + m.l + '" y="' + top + '" width="' + iw + '" height="' + ih + '"/></clipPath>';
+    g += '<g clip-path="url(#wc' + r + ')">';
+    result.chans.forEach((c, si) => {
+      const y = c[kk.k];
+      let d = '';
+      const px = Math.max(200, Math.round(iw));
+      const cnt = i1 - i0 + 1;
+      if (cnt <= px * 2){ for (let i = i0; i <= i1; i++) d += (i === i0 ? 'M' : 'L') + X(i / fs).toFixed(1) + ' ' + Y(y[i]).toFixed(1); }
+      else { const bs = cnt / px;
+        for (let j = 0; j < px; j++){
+          const a0 = i0 + Math.floor(j * bs), e0 = Math.min(i1, i0 + Math.floor((j + 1) * bs) - 1);
+          let mn = a0, mx = a0;
+          for (let i = a0; i <= e0; i++){ if (y[i] < y[mn]) mn = i; if (y[i] > y[mx]) mx = i; }
+          for (const i of (mn < mx ? [mn, mx] : [mx, mn])) d += (d ? 'L' : 'M') + X(i / fs).toFixed(1) + ' ' + Y(y[i]).toFixed(1);
+        }
+      }
+      const da = DASHES[si % DASHES.length];
+      g += '<path d="' + d + '" fill="none" stroke="' + COLORS[si % COLORS.length] + '" stroke-width="1"' + (da ? ' stroke-dasharray="' + da + '"' : '') + '/>';
+    });
+    g += '</g>' + txtEl(20, top + ih / 2, kk.lab, 'middle', 13, st.ink, st, ' transform="rotate(-90 20 ' + (top + ih / 2) + ')"');
+  });
+  g += txtEl(m.l + iw / 2, H - 12, 'Time (s)', 'middle', 14, st.ink, st);
+  const svg = $('plot');
+  svg.setAttribute('viewBox', '0 0 ' + W + ' ' + H);
+  svg.innerHTML = '<defs>' + defs + '</defs>' + g;
+}
+
+// ===== NS–EWのオービット =====
+function drawOrbit(){
+  if (!orbit){ $('orbWrap').classList.add('hidden'); return; }
+  $('orbWrap').classList.remove('hidden');
+  const st = plotStyle();
+  const H = 460, m = {l: 64, r: 16, t: 16, b: 52}, W = figW(520, H, m);
+  const iw = W - m.l - m.r, ih = H - m.t - m.b;
+  const {ns, ew, i0, i1} = orbit;
+  let mx = 0;
+  for (let i = i0; i <= i1; i++) mx = Math.max(mx, Math.abs(ns[i]), Math.abs(ew[i]));
+  mx = mx > 0 ? mx * 1.08 : 1;
+  const sc = Math.min(iw, ih) / (2 * mx);
+  const cx = m.l + iw / 2, cy = m.t + ih / 2;
+  const X = v => cx + v * sc, Y = v => cy - v * sc;
+  let g = '<rect x="' + m.l + '" y="' + m.t + '" width="' + iw + '" height="' + ih + '" fill="none" stroke="' + st.rule + '"/>';
+  for (const t of linT(-mx, mx, 4)){
+    g += '<line x1="' + X(t.v) + '" y1="' + m.t + '" x2="' + X(t.v) + '" y2="' + (m.t + ih) + '" stroke="' + (t.v === 0 ? st.ink2 : st.rule) + '"' + (t.v === 0 ? '' : ' stroke-dasharray="2 3"') + '/>'
+      + txtEl(X(t.v), m.t + ih + 19, fmtV(t.v), 'middle', 12.5, st.ink2, st)
+      + '<line x1="' + m.l + '" y1="' + Y(t.v) + '" x2="' + (m.l + iw) + '" y2="' + Y(t.v) + '" stroke="' + (t.v === 0 ? st.ink2 : st.rule) + '"' + (t.v === 0 ? '' : ' stroke-dasharray="2 3"') + '/>'
+      + txtEl(m.l - 8, Y(t.v) + 4, fmtV(t.v), 'end', 12.5, st.ink2, st);
+  }
+  let d = '';
+  for (let i = i0; i <= i1; i++) d += (i === i0 ? 'M' : 'L') + X(ew[i]).toFixed(1) + ' ' + Y(ns[i]).toFixed(1);
+  g += '<clipPath id="orbClip"><rect x="' + m.l + '" y="' + m.t + '" width="' + iw + '" height="' + ih + '"/></clipPath>'
+    + '<g clip-path="url(#orbClip)"><path d="' + d + '" fill="none" stroke="' + st.ink + '" stroke-width="0.8" stroke-linejoin="round"/></g>';
+  const ql = withU(orbit.q === 'acc' ? 'Acceleration' : orbit.q === 'vel' ? 'Velocity' : 'Displacement', orbit.q);
+  g += txtEl(m.l + iw / 2, H - 12, ql + ' EW', 'middle', 14, st.ink, st)
+    + txtEl(16, m.t + ih / 2, ql + ' NS', 'middle', 14, st.ink, st, ' transform="rotate(-90 16 ' + (m.t + ih / 2) + ')"');
+  const svg = $('orbit');
+  svg.setAttribute('viewBox', '0 0 ' + W + ' ' + H);
+  svg.innerHTML = g;
+}
+
+// ===== 描き分け =====
+function draw(){
+  if (!result) return;
+  const cmp = result.kind === 'cmp';
+  $('p2Wrap').classList.toggle('hidden', !cmp);
+  $('p3Wrap').classList.toggle('hidden', !cmp);
+  $('p4Wrap').classList.toggle('hidden', !(cmp && result.p4));
+  $('orbWrap').classList.toggle('hidden', !(result.kind === 'wave' && orbit));
+  const wv = result.kind === 'wave';
+  $('axY').classList.toggle('hidden', wv);
+  $('axXLab').textContent = wv ? '横軸（時間）' : '横軸';
+  $('pXL').classList.toggle('hidden', wv);
+  $('orbDl').classList.toggle('hidden', !(result.kind === 'wave' && orbit));
+
+  if (result.kind === 'wave'){ drawWave(); drawOrbit(); }
+  else if (result.kind === 'tri') drawTri();
+  else {
+    drawXY(result, {svgId: 'plot', useAxis: true, marks: true});
+    if (cmp){
+      const xlog = $('pXL').value === 'log';
+      drawXY(result.p2, {svgId: 'plot2', useAxis: true, xlog, ylog: $('pYL').value === 'log', H: 300});
+      drawXY(result.p3, {svgId: 'plot3', useAxis: true, xlog, ylog: false, yr: [-180, 180], H: 260});
+      if (result.p4) drawXY(result.p4, {svgId: 'plot4', useAxis: true, xlog, ylog: false, yr: [0, 1], H: 240});
+    }
+  }
+
+  $('legend').innerHTML = (result.kind === 'wave' ? result.chans : result.series).map((s, i) =>
+    '<span><svg width="24" height="6" style="vertical-align:middle;margin-right:5px"><line x1="0" y1="3" x2="24" y2="3" stroke="'
+    + COLORS[i % COLORS.length] + '" stroke-width="1.6"' + (DASHES[i % DASHES.length] ? ' stroke-dasharray="' + DASHES[i % DASHES.length] + '"' : '')
+    + '/></svg>' + s.name + '</span>').join('');
+  $('outTitle').textContent = result.kind === 'wave' ? '時刻歴波形'
+    : mode === 'fourier' ? (cmp ? 'フーリエスペクトルと伝達関数' : 'フーリエスペクトル') : '地震応答スペクトル';
+
+  const tb = $('peaks').querySelector('tbody');
+  if (result.rows && result.rows.length){
+    const th = mode === 'fourier'
+      ? '<tr><th>データ</th><th>順位</th><th>振動数 (Hz)</th><th>周期 (s)</th><th>振幅' + ($('unitIn').value !== 'none' ? '（' + UJ('amp') + '）' : '') + '</th></tr>'
+      : '<tr><th>データ</th><th>順位</th><th>周期 (s)</th><th>振動数 (Hz)</th><th>' + $('respQ').value + ($('unitIn').value !== 'none' ? '（' + UJ($('respQ').value) + '）' : '') + '</th></tr>';
+    $('peaks').querySelector('thead').innerHTML = th;
+    tb.innerHTML = result.rows.map(r => '<tr><td>' + r[0] + '</td><td>' + r[1] + '</td><td>'
+      + r[2].toFixed(3) + '</td><td>' + (r[4] != null ? r[4].toFixed(3) : '') + '</td><td>' + r[3].toPrecision(4) + '</td></tr>').join('');
+    $('peaks').classList.remove('hidden');
+  } else { tb.innerHTML = ''; $('peaks').classList.add('hidden'); }
+  $('out').classList.remove('hidden');
+  $('empty').classList.add('hidden');
+}
+
+function saveCSV(lines, name){
+  const blob = new Blob([lines.join('\n')], {type: 'text/csv'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob); a.download = name; a.click(); URL.revokeObjectURL(a.href);
+}
+$('dl').onclick = () => {
+  if (!result) return;
+  if (result.kind === 'wave'){
+    const head = ['Time_s'];
+    result.chans.forEach(c => head.push(c.name + '_acc', c.name + '_vel', c.name + '_dis'));
+    const lines = [head.join(',')];
+    const i0 = Math.max(0, Math.round(result.t0 * result.fs)), i1 = Math.min(result.n - 1, Math.round(result.t1 * result.fs));
+    for (let i = i0; i <= i1; i++){
+      const row = [(i / result.fs).toFixed(4)];
+      result.chans.forEach(c => row.push(c.acc[i].toPrecision(8), c.vel[i].toPrecision(8), c.dis[i].toPrecision(8)));
+      lines.push(row.join(','));
+    }
+    return saveCSV(lines, 'time_history.csv');
+  }
+  const xh = mode === 'fourier' ? 'Frequency_Hz' : 'Period_s';
+  const cols = [];
+  result.series.forEach(s => cols.push({n: s.name + (mode === 'fourier' ? '_amp' : ''), y: s.y}));
+  if (result.kind === 'cmp'){
+    result.p2.series.forEach(s => cols.push({n: s.name + '_ratio', y: s.y}));
+    result.p3.series.forEach(s => cols.push({n: s.name + '_phase_deg', y: s.y}));
+    if (result.p4) result.p4.series.forEach(s => cols.push({n: s.name + '_coherence', y: s.y}));
+  }
+  const lines = [xh + ',' + cols.map(c => c.n).join(',')];
+  const x = result.series[0].x, n = x.length;
+  for (let i = 0; i < n; i++) lines.push(x[i].toPrecision(8) + ',' + cols.map(c => c.y[i].toPrecision(8)).join(','));
+  saveCSV(lines, mode === 'fourier' ? (result.kind === 'cmp' ? 'transfer_function.csv' : 'fourier_spectrum.csv') : 'response_spectrum.csv');
+};
+$('orbDl').onclick = () => {
+  if (!orbit) return status('オービットがありません。', true);
+  const {ns, ew, i0, i1, fs} = orbit;
+  const lines = ['Time_s,EW,NS'];
+  for (let i = i0; i <= i1; i++) lines.push((i / fs).toFixed(4) + ',' + ew[i].toPrecision(8) + ',' + ns[i].toPrecision(8));
+  saveCSV(lines, 'orbit.csv');
+};
+
+['pX0', 'pX1', 'pXL', 'pY0', 'pY1', 'pYL', 'pkMark'].forEach(id => $(id).onchange = () => { if (result) draw(); });
+$('smType').onchange = () => { $('smBwWrap').classList.toggle('hidden', $('smType').value === 'none'); fixedNotes(); };
+$('smBw').onchange = fixedNotes;
+$('respQ').onchange = fixedNotes;
+$('combH').onchange = fixedNotes;
+$('unitIn').onchange = () => { fixedNotes(); if (result) draw(); };
+$('triOn').onchange = fixedNotes;
+$('refCh').onchange = fixedNotes;
+$('cohOn').onchange = fixedNotes;
+$('orbOn').onchange = () => { $('orbRow').classList.toggle('hidden', !$('orbOn').checked || !$('orbPair').options.length); fixedNotes(); };
+$('kindWrap').classList.remove('hidden');
+syncFour();
+refreshPairs();
+fixedNotes();
+</script>
+<footer id="credit" style="max-width:1180px;margin:0 auto;padding:12px 20px 40px;box-sizing:border-box;font-size:12px;line-height:1.7;color:#55606e;border-top:1px solid #cfd3d8">
+Author: Suguru SUZUKI<br>
+Created: September 23, 2026<br>
+Last updated: September 24, 2026<br>
+This tool is provided as is. Use at your own risk.<br>
+All calculations are done in your browser. No data is uploaded.<br>
+Contact: <a href="https://sites.google.com/view/kut-suzuki/home" target="_blank" rel="noopener" style="color:#55606e">https://sites.google.com/view/kut-suzuki/home</a>
+</footer>
+
+<script>
+/* ===== 設定の保存・読込（開く／上書き保存／名前を付けて保存） ===== */
+(function(){
+  const APP = 'PRISM', EXT = '.prsm', DYN = [];
+  const PICK = typeof window.showSaveFilePicker === 'function' && location.protocol !== 'file:';
+  const TYPES = [{description: APP + ' の設定ファイル', accept: {'application/json': [EXT]}}];
+  let handle = null, curName = '';
+  const fields = () => [...document.querySelectorAll('input, select, textarea')].filter(e => e.type !== 'file');
+  function snapshot(){
+    const v = {};
+    fields().forEach((e, i) => { v[e.id ? e.id : '#' + i] = (e.type === 'checkbox' || e.type === 'radio') ? !!e.checked : e.value; });
+    const dyn = {};
+    DYN.forEach(o => { const c = document.getElementById(o.rows); if (c) dyn[o.rows] = c.querySelectorAll('tr').length; });
+    return {app: APP, version: 1, saved: new Date().toISOString(), dyn, values: v};
+  }
+  function fire(e){ e.dispatchEvent(new Event('input', {bubbles: true})); e.dispatchEvent(new Event('change', {bubbles: true})); }
+  function restore(j){
+    if (!j || j.app !== APP) throw new Error('このファイルは ' + (j && j.app ? j.app : '別のアプリ') + ' の設定です');
+    DYN.forEach(o => {
+      const c = document.getElementById(o.rows), add = document.getElementById(o.add);
+      if (!c || !add) return;
+      const want = (j.dyn || {})[o.rows];
+      if (!want) return;
+      let guard = 0;
+      while (c.querySelectorAll('tr').length < want && guard++ < 200) add.click();
+      while (c.querySelectorAll('tr').length > want && guard++ < 200){
+        const rows = c.querySelectorAll('tr'), last = rows[rows.length - 1];
+        const del = last && last.querySelector('button');
+        if (!del) break;
+        del.click();
+      }
+    });
+    const fs = fields();
+    fs.forEach((e, i) => {
+      const k = e.id ? e.id : '#' + i;
+      if (!(k in j.values)) return;
+      const val = j.values[k];
+      if (e.type === 'checkbox' || e.type === 'radio'){ if (e.checked !== !!val){ e.checked = !!val; fire(e); } }
+      else if (e.value !== val){ e.value = val; fire(e); }
+    });
+    return fs.length;
+  }
+  function msg(t, err){
+    const b = document.getElementById('cfgMsg');
+    if (b){ b.textContent = t; b.style.fontWeight = err ? '600' : '400'; }
+  }
+  function setName(n){ curName = n || ''; const b = document.getElementById('cfgName'); if (b) b.textContent = curName; }
+  const text = () => JSON.stringify(snapshot(), null, 1);
+  function download(name){
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([text()], {type: 'application/json'}));
+    a.download = name; document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+  }
+  async function writeHandle(){
+    const w = await handle.createWritable();
+    await w.write(text()); await w.close();
+    setName(handle.name); msg('上書き保存しました。');
+  }
+  async function saveAs(){
+    const suggested = curName || APP.toLowerCase() + '_settings' + EXT;
+    if (!PICK){ download(suggested); msg('このブラウザでは上書き保存ができないため，ダウンロードしました。'); return; }
+    try {
+      handle = await window.showSaveFilePicker({suggestedName: suggested, types: TYPES});
+      await writeHandle(); msg('保存しました。');
+    } catch (e){ if (e.name !== 'AbortError') msg('保存できません：' + e.message, true); }
+  }
+  async function save(){
+    if (!handle) return saveAs();
+    try { await writeHandle(); } catch (e){ if (e.name !== 'AbortError') msg('保存できません：' + e.message, true); }
+  }
+  async function open(){
+    if (!PICK){ document.getElementById('cfgFile').click(); return; }
+    try {
+      const [h] = await window.showOpenFilePicker({types: TYPES, multiple: false});
+      const f = await h.getFile();
+      const n = restore(JSON.parse(await f.text()));
+      handle = h; setName(f.name);
+      msg('読み込みました（' + n + ' 項目）。データのCSVは含まれません。');
+    } catch (e){ if (e.name !== 'AbortError') msg('読み込めません：' + e.message, true); }
+  }
+  document.getElementById('cfgOpen').onclick = open;
+  document.getElementById('cfgSave').onclick = save;
+  document.getElementById('cfgSaveAs').onclick = saveAs;
+  document.getElementById('cfgFile').onchange = async e => {
+    const f = e.target.files[0]; e.target.value = '';
+    if (!f) return;
+    try { const n = restore(JSON.parse(await f.text())); setName(f.name); msg('読み込みました（' + n + ' 項目）。データのCSVは含まれません。'); }
+    catch (err){ msg('読み込めません：' + err.message, true); }
+  };
+})();
+</script>
+
+<script>
+/* ===== 図の保存と文字の大きさ ===== */
+(function(){
+  const APP = 'PRISM', FIGS = [{id:"plot",key:"result"},{id:"plot2",key:"ratio"},{id:"plot3",key:"phase"},{id:"plot4",key:"coherence"},{id:"orbit",key:"orbit"}];
+  let FS = 1;
+  const REDRAW = ['draw', 'drawOrbit'];
+  function scaleText(svg){
+    svg.querySelectorAll('text').forEach(t => {
+      if (!t.dataset.fs0){
+        const a = t.getAttribute('font-size');
+        t.dataset.fs0 = parseFloat(a || window.getComputedStyle(t).fontSize) || 13;
+      }
+      t.setAttribute('font-size', (parseFloat(t.dataset.fs0) * FS).toFixed(2));
+    });
+  }
+  function fitWidth(svg){
+    const vb = (svg.getAttribute('viewBox') || '').split(/\s+/).map(Number);
+    if (!(vb.length === 4 && vb[2] > 0)) return;
+    if (!svg.dataset.w0) svg.dataset.w0 = vb[2];
+    const w0 = parseFloat(svg.dataset.w0);
+    svg.style.width = Math.min(100, 100 * vb[2] / w0).toFixed(2) + '%';
+  }
+  function applyAll(){ FIGS.forEach(f => { const e = document.getElementById(f.id); if (e && e.tagName.toLowerCase() === 'svg'){ scaleText(e); fitWidth(e); } }); }
+  function svgSource(svg){
+    const c = svg.cloneNode(true);
+    c.querySelectorAll('title').forEach(e => e.remove());
+    let vb = c.getAttribute('viewBox');
+    if (!vb){ vb = '0 0 ' + (svg.clientWidth || 800) + ' ' + (svg.clientHeight || 400); c.setAttribute('viewBox', vb); }
+    const v = vb.split(/\s+/).map(Number);
+    c.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+    c.setAttribute('width', v[2]); c.setAttribute('height', v[3]);
+    c.removeAttribute('style'); c.removeAttribute('class');
+    c.insertAdjacentHTML('afterbegin', '<rect x="' + v[0] + '" y="' + v[1] + '" width="' + v[2] + '" height="' + v[3] + '" fill="#fff"/>');
+    return {src: new XMLSerializer().serializeToString(c), w: v[2], h: v[3]};
+  }
+  function save(blob, name){
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob); a.download = name;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+  }
+  function fname(f, ext){ return APP.toLowerCase() + '_' + f.key + '.' + ext; }
+  function saveSVG(f){ save(new Blob([svgSource(document.getElementById(f.id)).src], {type: 'image/svg+xml'}), fname(f, 'svg')); }
+  function savePNG(f){
+    const el = document.getElementById(f.id), k = 3;
+    if (el.tagName.toLowerCase() === 'canvas'){ el.toBlob(b => save(b, fname(f, 'png')), 'image/png'); return; }
+    const o = svgSource(el), img = new Image();
+    img.onload = () => {
+      const cv = document.createElement('canvas');
+      cv.width = o.w * k; cv.height = o.h * k;
+      const cx = cv.getContext('2d');
+      cx.fillStyle = '#fff'; cx.fillRect(0, 0, cv.width, cv.height);
+      cx.drawImage(img, 0, 0, cv.width, cv.height);
+      cv.toBlob(b => save(b, fname(f, 'png')), 'image/png');
+    };
+    img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(o.src);
+  }
+  function btn(t, fn){
+    const b = document.createElement('button');
+    b.type = 'button'; b.textContent = t; b.className = 'cfgBtn';
+    b.style.cssText = 'font:inherit;font-size:11.5px;padding:2px 8px;margin-left:6px;border:1px solid #cfd3d8;background:#fff;color:#1b2430;cursor:pointer;border-radius:0';
+    b.onclick = fn; return b;
+  }
+  let hasSvg = false;
+  FIGS.forEach(f => {
+    const el = document.getElementById(f.id);
+    if (!el) return;
+    const isSvg = el.tagName.toLowerCase() === 'svg';
+    const bar = document.createElement('div');
+    bar.style.cssText = 'display:flex;justify-content:flex-end;align-items:center;margin:2px 0 10px';
+    bar.appendChild(btn('PNG', () => savePNG(f)));
+    if (isSvg) bar.appendChild(btn('SVG', () => saveSVG(f)));
+    el.insertAdjacentElement('afterend', bar);
+    if (isSvg){
+      hasSvg = true;
+      scaleText(el);
+      fitWidth(el);
+      new MutationObserver(() => { scaleText(el); fitWidth(el); }).observe(el, {childList: true, subtree: true});
+    }
+  });
+  const cfg = document.getElementById('cfgBar');
+  if (cfg && hasSvg){
+    const wrap = document.createElement('span');
+    wrap.style.cssText = 'display:inline-flex;align-items:center;gap:6px;margin-left:10px';
+    wrap.innerHTML = '<span>図の文字</span>';
+    const sel = document.createElement('select');
+    sel.style.cssText = 'font:inherit;font-size:12.5px;padding:2px 6px;border:1px solid #cfd3d8;background:#fff;color:#1b2430;border-radius:0';
+    sel.innerHTML = '<option value="0.85">小</option><option value="1" selected>中</option><option value="1.2">大</option>';
+    sel.onchange = () => { FS = +sel.value || 1; applyAll(); };
+    wrap.appendChild(sel);
+    const ar = document.createElement('select');
+    ar.style.cssText = sel.style.cssText;
+    ar.innerHTML = '<option value="0">標準</option><option value="1.7778">16:9</option><option value="1.5">3:2</option><option value="1.3333">4:3</option><option value="1">1:1</option>';
+    ar.onchange = () => { window.__figAR = +ar.value || 0; REDRAW.forEach(n => { try { if (typeof window[n] === 'function') window[n](); } catch (e){} }); setTimeout(applyAll, 0); };
+    const lb = document.createElement('span'); lb.textContent = '図の縦横比';
+    wrap.appendChild(lb); wrap.appendChild(ar);
+    cfg.appendChild(wrap);
+  }
+})();
+</script>
+</body>
+</html>
